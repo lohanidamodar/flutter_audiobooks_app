@@ -12,7 +12,7 @@ class BooksApiProvider {
   Future<List<Book>> fetchBooks() async {
     final response = await client.get("$_books?format=json");
     final books = json.decode(response.body);
-    return Book.fromJsonArray(books['books']);
+    return Book.fromJsonArray(books["books"]);
   }
 
   Future<List<RssItem>> fetchFeeds(String url) async {

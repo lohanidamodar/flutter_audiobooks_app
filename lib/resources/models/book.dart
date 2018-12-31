@@ -1,4 +1,5 @@
 import 'package:audiobooks/resources/models/author.dart';
+import 'package:audiobooks/resources/models/section.dart';
 import 'package:meta/meta.dart';
 
 class Book {
@@ -12,6 +13,7 @@ class Book {
   final String totalTime;
   final int totalTimeSecs;
   final List<Author> authors;
+  // final List<Section> sections;
 
   Book({@required this.title, @required this.id, this.description, this.urlTextSource, this.language, this.urlRSS, this.urlZipFile, this.totalTime, this.totalTimeSecs, this.authors});
 
@@ -26,6 +28,7 @@ class Book {
     totalTime=json["totaltime"],
     totalTimeSecs=json["totaltimesecs"],
     authors=Author.fromJsonArray(json['authors']);
+    // sections=Section.fromJsonArray(json['sections']);
 
   static List<Book> fromJsonArray(List json) {
     List<Book> books = List<Book>();

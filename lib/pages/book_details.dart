@@ -1,9 +1,10 @@
 import 'package:audiobooks/resources/books_api_provider.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/widgets/title.dart';
-import 'package:audioplayer/audioplayer.dart';
 import 'package:flutter/material.dart';
 import 'package:webfeed/domain/rss_item.dart';
+import 'package:audioplayer/audioplayer.dart';
+import 'dart:async';
 
 class DetailPage extends StatefulWidget {
   final Book book;
@@ -17,7 +18,45 @@ class DetailPage extends StatefulWidget {
 
 class DetailPageState extends State<DetailPage> {
   bool playing = false;
+  Duration duration;
+  Duration position;
+  AudioPlayerState playerState;
+  StreamSubscription _audioPlayerStateSubscription;
+  StreamSubscription _positionSubscription;
+
   AudioPlayer player = AudioPlayer();
+  
+  @override
+  void initState() { 
+    super.initState();
+    _positionSubscription = player.onAudioPositionChanged.listen(
+        (p) => setState(() => position = p)
+      );
+
+      _audioPlayerStateSubscription = player.onPlayerStateChanged.listen((s) {
+        if (s == AudioPlayerState.PLAYING) {
+          setState(() => duration = player.duration);
+        } else if (s == AudioPlayerState.STOPPED) {
+          setState(() {
+            position = duration;
+          });
+        }
+      }, onError: (msg) {
+        setState(() {
+          playerState = AudioPlayerState.STOPPED;
+          duration = new Duration(seconds: 0);
+          position = new Duration(seconds: 0);
+        });
+      });
+  }
+
+  @override
+  void dispose() { 
+    super.dispose();
+    _audioPlayerStateSubscription.cancel();
+    _positionSubscription.cancel();
+    player.stop();
+  }
 
   Future<List<RssItem>>_getRssFeeds() {
     return BooksApiProvider().fetchFeeds(widget.book.urlRSS);
@@ -37,6 +76,8 @@ class DetailPageState extends State<DetailPage> {
           Text(widget.book.urlZipFile),
           SizedBox(height: 20,),
           IconButton(icon: Icon(playing?Icons.pause:Icons.play_arrow), onPressed: _togglePlayer,),
+          Text(duration.toString() + " Duration"),
+          Text(position.toString() + " position"),
           SizedBox(height: 20,),
           Container(
             child: FutureBuilder(
@@ -63,10 +104,12 @@ class DetailPageState extends State<DetailPage> {
 
   void _playAudio(String url) {
     player.stop();
-    player.play(url);
     setState(() {
-      playing = true;
-    });
+          duration=null;
+          position=null;
+          playing=true;
+        });
+    player.play(url);
   }
 
   void _togglePlayer(){
