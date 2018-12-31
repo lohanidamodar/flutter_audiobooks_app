@@ -1,6 +1,7 @@
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/pages/book_details.dart';
 import 'package:audiobooks/resources/repository.dart';
+import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
 
 void main() => runApp(AudioBooksApp());
@@ -29,11 +30,7 @@ class HomePage extends StatelessWidget {
         future: Repository().fetchBooks(),
         builder: (BuildContext context, AsyncSnapshot<List<Book>> snapshot){
           if(snapshot.hasData){
-            return GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 2.0
-              ),
+            return ListView.builder(
               itemCount: snapshot.data.length,
               itemBuilder: (_,__)=> _buildBookItem(_,__,snapshot),
             );
@@ -52,7 +49,7 @@ class HomePage extends StatelessWidget {
       leading: CircleAvatar(
         child: Text(book.title[0]),
       ),
-      title: Text(book.title),
+      title: BookTitle(book.title),
       subtitle: Text(book.authors.map((author)=>author.firstName+" "+author.lastName+",").toString()),
     );
   }

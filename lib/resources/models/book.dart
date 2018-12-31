@@ -20,7 +20,7 @@ class Book {
     title=json["title"],
     description=json["description"],
     urlTextSource=json["url_text_source"],
-    urlRSS=json["urlRSS"],
+    urlRSS=json["url_rss"],
     urlZipFile=json["url_zip_file"],
     language=json["language"],
     totalTime=json["totaltime"],
