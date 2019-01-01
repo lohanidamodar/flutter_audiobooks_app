@@ -22,27 +22,6 @@ class AudioBooksApp extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  
-  HomePage() {
-    List<Author> authors = [
-      Author(
-        firstName: "Damodar",
-        id: "125",
-        lastName: "Lohani",
-        dob: "1991",
-        dod: "2075"
-      ),
-      Author(
-        firstName: "Lohani",
-        id: "125",
-        lastName: "Damodar",
-        dob: "1991",
-        dod: "2075"
-      ),
-    ];
-    print(Author.toJsonArray(authors));
-  }
-
   @override
   _HomePageState createState() {
     return new _HomePageState();
