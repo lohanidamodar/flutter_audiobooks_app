@@ -12,10 +12,8 @@ class BooksApiProvider implements Source{
   Client client = Client();
   Future<List<Book>> fetchBooks(int offset, int limit) async {
     final response = await client.get("$_books?format=json&offset=$offset&limit=$limit");
-    Map books = json.decode(response.body);
-    List<Map> boo = List<Map>();
-    books["books"].forEach((String key, dynamic value)=>boo.add(value));
-    return Book.fromJsonArray(boo);
+    Map resJson = json.decode(response.body);
+    return Book.fromJsonArray(resJson['books']);
   }
 
   Future<List<RssItem>> fetchFeeds(String url) async {
