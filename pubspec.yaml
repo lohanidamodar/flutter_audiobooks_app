@@ -26,6 +26,7 @@ dependencies:
   flutter_downloader:
   path_provider:
   flutter_bloc:
+  sqflite:
 
 dev_dependencies:
   flutter_test:

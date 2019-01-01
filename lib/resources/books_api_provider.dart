@@ -1,4 +1,5 @@
 import 'package:audiobooks/resources/models/book.dart';
+import 'package:audiobooks/resources/repository.dart';
 import 'package:http/http.dart' show Client;
 import 'dart:convert';
 import 'package:webfeed/webfeed.dart';
@@ -6,7 +7,7 @@ import 'package:webfeed/webfeed.dart';
 final _root = "https://librivox.org/api/";
 final _books = _root + "feed/audiobooks";
 
-class BooksApiProvider {
+class BooksApiProvider implements Source{
 
   Client client = Client();
   Future<List<Book>> fetchBooks(int offset, int limit) async {
@@ -24,3 +25,5 @@ class BooksApiProvider {
   }
 
 }
+
+final booksApiProvider = BooksApiProvider();
