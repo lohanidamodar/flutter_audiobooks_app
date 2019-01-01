@@ -41,4 +41,10 @@ class Author{
     return json.encode(authors.map((author)=>author.toMap()).toList());
   }
 
+  static String listToString(List<Author> authors) {
+    String sAuthors="";
+    authors.forEach((Author author)=> sAuthors += "${author.firstName} ${author.lastName}, ");
+    return sAuthors.substring(0,(sAuthors.length-2));
+  }
+
 }

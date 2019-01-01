@@ -123,7 +123,7 @@ class _HomePageState extends State<HomePage> {
         child: Text(book.title[0]),
       ),
       title: BookTitle(book.title),
-      subtitle: Text(book.authors.map((author)=>author.firstName+" "+author.lastName+",").toString()),
+      subtitle: Text(Author.listToString(book.authors)),
     );
   }
 
