@@ -6,7 +6,7 @@ class BookTitle extends StatelessWidget {
 
   BookTitle(this.title, {Key key, this.style}) : super(key: key);
 
-  TextStyle titleStyle = TextStyle(
+  final TextStyle titleStyle = TextStyle(
     fontWeight: FontWeight.bold,
     fontSize: 18.0
   );
