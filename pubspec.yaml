@@ -25,6 +25,7 @@ dependencies:
   audioplayer:
   flutter_downloader:
   path_provider:
+  flutter_bloc:
 
 dev_dependencies:
   flutter_test:

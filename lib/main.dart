@@ -1,8 +1,10 @@
+import 'package:audiobooks/resources/blocs/bloc.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/pages/book_details.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() => runApp(AudioBooksApp());
 
@@ -18,32 +20,82 @@ class AudioBooksApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   
+  @override
+  _HomePageState createState() {
+    return new _HomePageState();
+  }
+}
+
+class _HomePageState extends State<HomePage> {
+  final _scrollController = ScrollController();
+  final BookBloc _bookBloc = BookBloc();
+  final _scrollThreshold = 200.0;
+
+  _HomePageState() {
+    _scrollController.addListener(_onScroll);
+    _bookBloc.dispatch(FetchBook());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text("Audio Books"),
       ),
-      body: FutureBuilder(
-        future: Repository().fetchBooks(),
-        builder: (BuildContext context, AsyncSnapshot<List<Book>> snapshot){
-          if(snapshot.hasData){
-            return ListView.builder(
-              itemCount: snapshot.data.length,
-              itemBuilder: (_,__)=> _buildBookItem(_,__,snapshot),
+      body: BlocBuilder(
+        bloc: _bookBloc,
+        builder: (BuildContext context, BookState state){
+          if (state is BookUninitialized) {
+            return Center(
+              child: CircularProgressIndicator(),
             );
-          }else{
-            return Center(child: CircularProgressIndicator(),);
+          }
+          if (state is BookInitialized) {
+            if (state.hasError) {
+              return Center(
+                child: Text('failed to fetch posts'),
+              );
+            }
+            if (state.books.isEmpty) {
+              return Center(
+                child: Text('no posts'),
+              );
+            }
+            return ListView.builder(
+              controller: _scrollController,
+              itemCount: state.hasReachedMax
+                ? state.books.length
+                : state.books.length + 1,
+              itemBuilder: (context,index){
+                return index >= state.books.length
+                  ? BottomLoader()
+                  : _buildBookItem(context,index,state.books);
+              }
+            );
           }
         },
       )
     );
   }
 
-  Widget _buildBookItem(BuildContext context, int index, AsyncSnapshot<List<Book>> snapshot) {
-    Book book = snapshot.data[index];
+  @override
+  void dispose() {
+    _bookBloc.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    if (maxScroll - currentScroll <= _scrollThreshold) {
+      _bookBloc.dispatch(FetchBook());
+    }
+  }
+
+  Widget _buildBookItem(BuildContext context, int index, List<Book> books) {
+    Book book = books[index];
     return ListTile(
       onTap: () => _openDetail(context,book),
       leading: CircleAvatar(
@@ -58,5 +110,23 @@ class HomePage extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => DetailPage(book)
     ));
+  }
+}
+
+class BottomLoader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      child: Center(
+        child: SizedBox(
+          width: 33,
+          height: 33,
+          child: CircularProgressIndicator(
+            strokeWidth: 1.5,
+          ),
+        ),
+      ),
+    );
   }
 }

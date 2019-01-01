@@ -4,8 +4,8 @@ import './models/book.dart';
 
 class Repository {
 
-  Future<List<Book>> fetchBooks() {
-    return BooksApiProvider().fetchBooks();
+  Future<List<Book>> fetchBooks(int offset, int limit) {
+    return BooksApiProvider().fetchBooks(offset,limit);
   }
 
 }

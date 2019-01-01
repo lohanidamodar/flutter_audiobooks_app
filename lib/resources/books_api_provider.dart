@@ -9,8 +9,8 @@ final _books = _root + "feed/audiobooks";
 class BooksApiProvider {
 
   Client client = Client();
-  Future<List<Book>> fetchBooks() async {
-    final response = await client.get("$_books?format=json");
+  Future<List<Book>> fetchBooks(int offset, int limit) async {
+    final response = await client.get("$_books?format=json&offset=$offset&limit=$limit");
     final books = json.decode(response.body);
     return Book.fromJsonArray(books["books"]);
   }
