@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
+import 'dart:convert';
 
-class Author {
+class Author{
   final String id;
   final String firstName;
   final String lastName;
@@ -21,4 +22,23 @@ class Author {
     json.forEach((author)=>authors.add(Author.fromJson(author)));
     return authors;
   }
+
+  Map<String,dynamic> toMap(){
+    return {
+      "id":id,
+      "first_name":firstName,
+      "last_name":lastName,
+      "dob":dob,
+      "dod":dod
+    };
+  }
+
+  String toJson() {
+    return json.encode(this.toMap());
+  }
+
+  static String toJsonArray(List<Author> authors){
+    return json.encode(authors.map((author)=>author.toMap()).toList());
+  }
+
 }

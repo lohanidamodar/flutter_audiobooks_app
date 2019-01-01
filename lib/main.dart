@@ -1,4 +1,5 @@
 import 'package:audiobooks/resources/blocs/bloc.dart';
+import 'package:audiobooks/resources/models/author.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/pages/book_details.dart';
 import 'package:audiobooks/resources/repository.dart';
@@ -22,6 +23,26 @@ class AudioBooksApp extends StatelessWidget {
 
 class HomePage extends StatefulWidget {
   
+  HomePage() {
+    List<Author> authors = [
+      Author(
+        firstName: "Damodar",
+        id: "125",
+        lastName: "Lohani",
+        dob: "1991",
+        dod: "2075"
+      ),
+      Author(
+        firstName: "Lohani",
+        id: "125",
+        lastName: "Damodar",
+        dob: "1991",
+        dod: "2075"
+      ),
+    ];
+    print(Author.toJsonArray(authors));
+  }
+
   @override
   _HomePageState createState() {
     return new _HomePageState();
@@ -102,7 +123,7 @@ class _HomePageState extends State<HomePage> {
         child: Text(book.title[0]),
       ),
       title: BookTitle(book.title),
-      // subtitle: Text(book.authors.map((author)=>author.firstName+" "+author.lastName+",").toString()),
+      subtitle: Text(book.authors.map((author)=>author.firstName+" "+author.lastName+",").toString()),
     );
   }
 
