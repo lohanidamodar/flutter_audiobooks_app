@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:webfeed/domain/rss_item.dart';
 import 'package:audioplayer/audioplayer.dart';
 import 'dart:async';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:path_provider/path_provider.dart';
 
 class DetailPage extends StatefulWidget {
   final Book book;
@@ -16,6 +18,7 @@ class DetailPage extends StatefulWidget {
   }
 }
 
+
 class DetailPageState extends State<DetailPage> {
   bool playing = false;
   Duration duration;
@@ -23,9 +26,21 @@ class DetailPageState extends State<DetailPage> {
   AudioPlayerState playerState;
   StreamSubscription _audioPlayerStateSubscription;
   StreamSubscription _positionSubscription;
+  var taskId;
 
   AudioPlayer player = AudioPlayer();
   
+  _downloadBook() async{
+    var path = await getApplicationDocumentsDirectory();
+    taskId = await FlutterDownloader.enqueue(
+      url: widget.book.urlZipFile,
+      savedDir: path.path,
+      showNotification: true, // show download progress in status bar (for Android)
+      openFileFromNotification: true, // click on notification to open downloaded file (for Android)
+    );
+    await FlutterDownloader.loadTasks();
+  }
+
   @override
   void initState() { 
     super.initState();
@@ -74,6 +89,7 @@ class DetailPageState extends State<DetailPage> {
           Text(widget.book.description),
           Text(widget.book.totalTime),
           Text(widget.book.urlZipFile),
+          IconButton(icon: Icon(Icons.file_download), onPressed: _downloadBook,),
           SizedBox(height: 20,),
           IconButton(icon: Icon(playing?Icons.pause:Icons.play_arrow), onPressed: _togglePlayer,),
           Text(duration.toString() + " Duration"),

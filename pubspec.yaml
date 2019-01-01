@@ -23,6 +23,8 @@ dependencies:
   webfeed:
   html:
   audioplayer:
+  flutter_downloader:
+  path_provider:
 
 dev_dependencies:
   flutter_test:
