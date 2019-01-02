@@ -82,24 +82,30 @@ class DetailPageState extends State<DetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Audio Books"),
+        title: Text(widget.book.title),
       ),
       body: ListView(
         padding: EdgeInsets.all(20.0),
         children: <Widget>[
           BookTitle(widget.book.title),
+          SizedBox(height: 5.0,),
+          Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle,),
+          SizedBox(height: 10.0,),
           Html(
             defaultTextStyle: Theme.of(context).textTheme.body1.merge(TextStyle(fontSize: 18)),
             data: widget.book.description,
           ),
-          Text(widget.book.totalTime),
-          Text(widget.book.urlZipFile),
-          IconButton(icon: Icon(Icons.file_download), onPressed: _downloadBook,),
+          // SizedBox(height: 20,),
+          // IconButton(icon: Icon(playing?Icons.pause:Icons.play_arrow), onPressed: _togglePlayer,),
+          // Text(duration.toString() + " Duration"),
+          // Text(position.toString() + " position"),
           SizedBox(height: 20,),
-          IconButton(icon: Icon(playing?Icons.pause:Icons.play_arrow), onPressed: _togglePlayer,),
-          Text(duration.toString() + " Duration"),
-          Text(position.toString() + " position"),
-          SizedBox(height: 20,),
+          RaisedButton.icon(
+            icon: Icon(Icons.file_download),
+            onPressed: _downloadBook,
+            label: Text("Download whole book"),
+          ),
+          // IconButton(icon: Icon(Icons.file_download), onPressed: _downloadBook,),
           Container(
             child: FutureBuilder(
               future: _getRssFeeds(),
@@ -108,6 +114,7 @@ class DetailPageState extends State<DetailPage> {
                   return Column(
                     children: snapshot.data.map((item)=>ListTile(
                       title: Text(item.title),
+                      leading: Icon(Icons.play_circle_filled),
                       onTap: () => _playAudio(item.enclosure.url),
                     )).toList(),
                   );

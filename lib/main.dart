@@ -16,7 +16,7 @@ class AudioBooksApp extends StatelessWidget {
       theme: ThemeData(
         textTheme: TextTheme(
           title: TextStyle(fontFamily: "Aleo",fontWeight: FontWeight.bold),
-          subtitle: TextStyle(fontFamily: "Slabo"),
+          subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
 
         ),
         buttonColor: Theme.of(context).accentColor,
