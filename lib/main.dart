@@ -14,7 +14,14 @@ class AudioBooksApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        primarySwatch: Colors.pink
+        textTheme: TextTheme(
+          title: TextStyle(fontFamily: "Aleo",fontWeight: FontWeight.bold),
+          subtitle: TextStyle(fontFamily: "Slabo"),
+
+        ),
+        buttonColor: Theme.of(context).accentColor,
+        primarySwatch: Colors.pink,
+        accentColor: Colors.indigoAccent
       ),
       home: HomePage(),
     );
@@ -43,6 +50,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Audio Books"),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: (){},
+        child: Icon(Icons.today),
       ),
       body: BlocBuilder(
         bloc: _bookBloc,
@@ -102,7 +113,7 @@ class _HomePageState extends State<HomePage> {
         child: Text(book.title[0]),
       ),
       title: BookTitle(book.title),
-      subtitle: Text(Author.listToString(book.authors)),
+      subtitle: Text(Author.listToString(book.authors), style: Theme.of(context).textTheme.subtitle),
     );
   }
 

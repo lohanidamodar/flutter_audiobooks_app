@@ -7,7 +7,7 @@ class BookTitle extends StatelessWidget {
   BookTitle(this.title, {Key key, this.style}) : super(key: key);
 
   final TextStyle titleStyle = TextStyle(
-    fontWeight: FontWeight.bold,
+    // fontWeight: FontWeight.bold,
     fontSize: 18.0
   );
 
@@ -15,7 +15,7 @@ class BookTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: titleStyle.merge(style),
+      style: Theme.of(context).textTheme.title.merge(titleStyle.merge(style)),
     );
   }
 }
