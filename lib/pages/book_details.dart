@@ -2,6 +2,7 @@ import 'package:audiobooks/resources/books_api_provider.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:webfeed/domain/rss_item.dart';
 import 'package:audioplayer/audioplayer.dart';
 import 'dart:async';
@@ -84,9 +85,13 @@ class DetailPageState extends State<DetailPage> {
         title: Text("Audio Books"),
       ),
       body: ListView(
+        padding: EdgeInsets.all(20.0),
         children: <Widget>[
           BookTitle(widget.book.title),
-          Text(widget.book.description),
+          Html(
+            defaultTextStyle: Theme.of(context).textTheme.body1.merge(TextStyle(fontSize: 18)),
+            data: widget.book.description,
+          ),
           Text(widget.book.totalTime),
           Text(widget.book.urlZipFile),
           IconButton(icon: Icon(Icons.file_download), onPressed: _downloadBook,),

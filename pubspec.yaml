@@ -27,6 +27,7 @@ dependencies:
   path_provider:
   flutter_bloc:
   sqflite:
+  flutter_html:
 
 dev_dependencies:
   flutter_test:
