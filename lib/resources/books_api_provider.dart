@@ -1,4 +1,4 @@
-import 'package:audiobooks/resources/models/book.dart';
+import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:http/http.dart' show Client;
 import 'dart:convert';
@@ -16,12 +16,18 @@ class BooksApiProvider implements Source{
     return Book.fromJsonArray(resJson['books']);
   }
 
-  Future<List<RssItem>> fetchFeeds(String url) async {
+  Future<List<AudioFile>> fetchAudioFiles(String bookId, String url) async {
     if(url == null) return null;
     final response = await client.get(url);
     final String feed = response.body;
     RssFeed rssFeed = RssFeed.parse(feed);
-    return rssFeed.items;
+    List<AudioFile> afiles = List<AudioFile>();
+    rssFeed.items.forEach((item)=>afiles.add(AudioFile(
+      bookId: bookId,
+      title: item.title,
+      link: item.enclosure.url
+    )));
+    return afiles;
   }
 
 }

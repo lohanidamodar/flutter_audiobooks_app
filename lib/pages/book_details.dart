@@ -1,9 +1,9 @@
 import 'package:audiobooks/resources/books_api_provider.dart';
-import 'package:audiobooks/resources/models/book.dart';
+import 'package:audiobooks/resources/models/models.dart';
+import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:webfeed/domain/rss_item.dart';
 import 'package:audioplayer/audioplayer.dart';
 import 'dart:async';
 import 'package:flutter_downloader/flutter_downloader.dart';
@@ -74,8 +74,8 @@ class DetailPageState extends State<DetailPage> {
     player.stop();
   }
 
-  Future<List<RssItem>>_getRssFeeds() {
-    return BooksApiProvider().fetchFeeds(widget.book.urlRSS);
+  Future<List<AudioFile>>_getRssFeeds() {
+    return Repository().fetchAudioFiles(widget.book.id,widget.book.urlRSS);
   }
 
   @override
@@ -109,13 +109,13 @@ class DetailPageState extends State<DetailPage> {
           Container(
             child: FutureBuilder(
               future: _getRssFeeds(),
-              builder: (BuildContext context, AsyncSnapshot<List<RssItem>> snapshot){
+              builder: (BuildContext context, AsyncSnapshot<List<AudioFile>> snapshot){
                 if(snapshot.hasData){
                   return Column(
                     children: snapshot.data.map((item)=>ListTile(
                       title: Text(item.title),
                       leading: Icon(Icons.play_circle_filled),
-                      onTap: () => _playAudio(item.enclosure.url),
+                      onTap: () => _playAudio(item.link),
                     )).toList(),
                   );
                 }else{

@@ -1,3 +1,4 @@
+import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:path/path.dart';
@@ -111,6 +112,17 @@ class DatabaseHelper implements Cache{
   @override
   Future saveBooks(List<Book> books) async {
     books.forEach((Book book)=>saveBook(book));
+  }
+
+  @override
+  Future<List<AudioFile>> fetchAudioFiles(String bookId, String url) async {
+    List<AudioFile> audiofiles = List<AudioFile>();
+    return audiofiles;
+  }
+
+  @override
+  Future saveAudioFiles(List<AudioFile> audiofiles) async {
+    return 1;
   }
 
 }
