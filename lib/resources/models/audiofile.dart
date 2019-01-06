@@ -15,19 +15,39 @@ class AudioFile{
     title=json["title"],
     link=json["link"];
 
+  AudioFile.fromDB(Map dbAudio):
+    id=dbAudio["id"].toString(),
+    bookId=dbAudio["book_id"].toString(),
+    title=dbAudio["title"],
+    link=dbAudio["link"];
+
   static List<AudioFile> fromJsonArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
     json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
     return audiofiles;
   }
+  static List<AudioFile> fromDBArray(List json) {
+    List<AudioFile> audiofiles = List<AudioFile>();
+    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromDB(audiofile)));
+    return audiofiles;
+  }
 
   Map<String,dynamic> toMap(){
-    return {
-      "id":id,
-      "book_id":bookId,
-      "link":link,
-      "title":title,
-    };
+    if(id == null) {
+      return {
+        "book_id":bookId,
+        "link":link,
+        "title":title,
+      };
+    }else {
+      return {
+        "id":id,
+        "book_id":bookId,
+        "link":link,
+        "title":title,
+      };
+
+    }
   }
 
   String toJson() {

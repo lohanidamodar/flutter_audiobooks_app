@@ -26,7 +26,7 @@ class Repository {
 
   Future<List<AudioFile>> fetchAudioFiles(String bookId, String url) async {
     List<AudioFile> audiofiles;
-    audiofiles = await caches[0].fetchAudioFiles(bookId, url);
+    audiofiles = await caches[0].fetchAudioFiles(bookId);
     if(audiofiles.length <=0 ) {
       audiofiles = await sources[0].fetchAudioFiles(bookId, url);
       caches[0].saveAudioFiles(audiofiles);
@@ -45,5 +45,5 @@ abstract class Cache{
   Future saveBooks(List<Book> books);
   Future saveAudioFiles(List<AudioFile> audiofiles);
   Future<List<Book>> getBooks(int offset, int limit);
-  Future<List<AudioFile>> fetchAudioFiles(String bookId, String url);
+  Future<List<AudioFile>> fetchAudioFiles(String bookId);
 }

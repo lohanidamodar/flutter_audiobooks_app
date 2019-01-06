@@ -15,11 +15,11 @@ class DatabaseHelper implements Cache{
 
   static final String bookTable = "books";
   final String authorTable = "authors";
-  final String audioFilesTable = "audiofiles";
+  static final String audioFilesTable = "audiofiles";
   
   static final String columnId = "id";
+  static final String columnTitle="title";
   
-  static final String bookTitleColumn="title";
   static final String bookDescriptionColumn="description";
   static final String bookUrlTextSourceColumn="url_text_source";
   static final String bookLanguageColumn="language";
@@ -29,10 +29,22 @@ class DatabaseHelper implements Cache{
   static final String bookTotalTimeSecsColumn="totaltimesecs";
   static final String bookAuthorsColumn="authors";
 
+  static final String audioFileBookIdColumn = "book_id";
+  static final String audioFileLinkColumn = "link";
+
+  final String createAudiofilesTable = """
+    CREATE TABLE $audioFilesTable (
+      $columnId INTEGER PRIMARY KEY,
+      $columnTitle TEXT,
+      $audioFileLinkColumn TEXT,
+      $audioFileBookIdColumn INTEGER 
+    );
+  """;
+
   final String createBooksTable = """
     CREATE TABLE $bookTable (
       $columnId INTEGER PRIMARY KEY,
-      $bookTitleColumn TEXT,
+      $columnTitle TEXT,
       $bookDescriptionColumn TEXT,
       $bookLanguageColumn TEXT,
       $bookUrlTextSourceColumn TEXT,
@@ -61,6 +73,7 @@ class DatabaseHelper implements Cache{
   }
 
   void _onCreate(Database db, int version) async {
+    await db.execute(createAudiofilesTable);
     await db.execute(createBooksTable);
   }
 
@@ -70,6 +83,11 @@ class DatabaseHelper implements Cache{
     int result = await dbClient.insert(bookTable, book.toMap());
     return result;
   }
+  Future<int> saveAudioFile(AudioFile audiofile) async {
+    var dbClient = await db;
+    int result = await dbClient.insert(audioFilesTable, audiofile.toMap());
+    return result;
+  }
 
   @override
   Future<List<Book>> getBooks(int offset, int limit) async {
@@ -77,32 +95,6 @@ class DatabaseHelper implements Cache{
     var res = await dbClient.rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
     return Book.fromDBArray(res);
   }
-
-  // Future<int> getCount() async {
-  //   var dbClient = await db;
-  //   return Sqflite.firstIntValue(await dbClient.rawQuery('SELECT COUNT(*) FROM $tableUser'));
-  // }
-
-  // Future<User> getUser(int id) async {
-  //   var dbClient = await db;
-  //   var res = await dbClient.rawQuery('SELECT * FROM $tableUser WHERE $columnId=$id');
-  //   if(res.length == 0) return null;
-  //   return User.fromMap(res.first);
-  // }
-
-  // Future<int> updateUser(User user) async {
-  //   var dbClient = await db;
-  //   var res = await dbClient.update(tableUser,
-  //     user.toMap(),
-  //     where: "$columnId=?",
-  //     whereArgs: [user.id]);
-  //   return res;
-  // }
-
-  // Future<int> deleteUser(int id) async {
-  //   var dbClient = await db;
-  //   return await dbClient.delete(tableUser,where: '$columnId=?', whereArgs: [id]);
-  // }
 
   Future close() async {
     var dbClient = await db;
@@ -115,14 +107,15 @@ class DatabaseHelper implements Cache{
   }
 
   @override
-  Future<List<AudioFile>> fetchAudioFiles(String bookId, String url) async {
-    List<AudioFile> audiofiles = List<AudioFile>();
-    return audiofiles;
+  Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
+    var dbClient = await db;
+    var res = await dbClient.query(audioFilesTable,where: " $audioFileBookIdColumn = ?", whereArgs: [bookId]);
+    return AudioFile.fromDBArray(res);
   }
 
   @override
   Future saveAudioFiles(List<AudioFile> audiofiles) async {
-    return 1;
+    audiofiles.forEach((AudioFile audiofile)=>saveAudioFile(audiofile));
   }
 
 }
