@@ -10,7 +10,7 @@ description: A new Flutter project.
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.0.0-dev.68.0 <3.0.0"
+  sdk: ">=2.2.2 <3.0.0"
 
 dependencies:
   flutter:
@@ -19,15 +19,17 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.2
-  http:
-  webfeed:
-  html:
-  audioplayer:
-  flutter_downloader:
-  path_provider:
-  flutter_bloc:
-  sqflite:
-  flutter_html:
+  http: ^0.12.0+2
+  webfeed: ^0.4.2
+  html: ^0.13.4+1
+  flutter_sound: ^1.3.7
+  flutter_downloader: ^1.1.7
+  path_provider: 0.5.0+1
+  flutter_bloc: ^0.9.1
+  sqflite: ^1.1.3
+  flutter_html: ^0.9.6
+  audio_service: ^0.2.1
+
 
 dev_dependencies:
   flutter_test:
