@@ -4,7 +4,6 @@ import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:audioplayer/audioplayer.dart';
 import 'dart:async';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,16 +20,7 @@ class DetailPage extends StatefulWidget {
 
 
 class DetailPageState extends State<DetailPage> {
-  bool playing = false;
-  Duration duration;
-  Duration position;
-  AudioPlayerState playerState;
-  StreamSubscription _audioPlayerStateSubscription;
-  StreamSubscription _positionSubscription;
-  var taskId;
-
-  AudioPlayer player = AudioPlayer();
-  
+  var taskId;  
   _downloadBook() async{
     var path = await getApplicationDocumentsDirectory();
     taskId = await FlutterDownloader.enqueue(
@@ -45,33 +35,11 @@ class DetailPageState extends State<DetailPage> {
   @override
   void initState() { 
     super.initState();
-    _positionSubscription = player.onAudioPositionChanged.listen(
-        (p) => setState(() => position = p)
-      );
-
-      _audioPlayerStateSubscription = player.onPlayerStateChanged.listen((s) {
-        if (s == AudioPlayerState.PLAYING) {
-          setState(() => duration = player.duration);
-        } else if (s == AudioPlayerState.STOPPED) {
-          setState(() {
-            position = duration;
-          });
-        }
-      }, onError: (msg) {
-        setState(() {
-          playerState = AudioPlayerState.STOPPED;
-          duration = new Duration(seconds: 0);
-          position = new Duration(seconds: 0);
-        });
-      });
   }
 
   @override
   void dispose() { 
     super.dispose();
-    _audioPlayerStateSubscription.cancel();
-    _positionSubscription.cancel();
-    player.stop();
   }
 
   Future<List<AudioFile>>_getRssFeeds() {
@@ -115,7 +83,7 @@ class DetailPageState extends State<DetailPage> {
                     children: snapshot.data.map((item)=>ListTile(
                       title: Text(item.title),
                       leading: Icon(Icons.play_circle_filled),
-                      onTap: () => _playAudio(item.link),
+                      onTap: () => print(item.link),
                     )).toList(),
                   );
                 }else{
@@ -128,29 +96,5 @@ class DetailPageState extends State<DetailPage> {
         ],
       )
     );
-  }
-
-  void _playAudio(String url) {
-    player.stop();
-    setState(() {
-          duration=null;
-          position=null;
-          playing=true;
-        });
-    player.play(url);
-  }
-
-  void _togglePlayer(){
-    if(playing) {
-      player.pause();
-      setState(() {
-        playing = false;
-      });
-    }else{
-      player.play("");
-      setState(() {
-        playing = true;
-      });
-    }
   }
 }

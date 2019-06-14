@@ -16,7 +16,7 @@ class BookBloc extends Bloc<BookEvent, BookState> {
   get initialState => BookUninitialized();
 
   @override
-  Stream<BookState> mapEventToState(currentState, event) async* {
+  Stream<BookState> mapEventToState(BookEvent event) async* {
     if (event is FetchBook && !_hasReachedMax(currentState)) {
       try {
         if (currentState is BookUninitialized) {
@@ -24,10 +24,10 @@ class BookBloc extends Bloc<BookEvent, BookState> {
           yield BookInitialized.success(books);
         }
         if (currentState is BookInitialized) {
-          final books = await _fetchBooks(currentState.books.length, 20);
+          final books = await _fetchBooks((currentState as BookInitialized).books.length, 20);
           yield books.isEmpty
-              ? currentState.copyWith(hasReachedMax: true)
-              : BookInitialized.success(currentState.books + books);
+              ? (currentState as BookInitialized).copyWith(hasReachedMax: true)
+              : BookInitialized.success((currentState as BookInitialized).books + books);
         }
       } catch (_) {
         yield BookInitialized.failure();
