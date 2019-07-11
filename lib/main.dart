@@ -1,29 +1,31 @@
-import 'package:audiobooks/resources/blocs/bloc.dart';
 import 'package:audiobooks/resources/models/author.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/pages/book_details.dart';
-import 'package:audiobooks/resources/repository.dart';
+import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 void main() => runApp(AudioBooksApp());
 
 class AudioBooksApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        textTheme: TextTheme(
-          title: TextStyle(fontFamily: "Aleo",fontWeight: FontWeight.bold),
-          subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
+    return ChangeNotifierProvider(
+      builder: (_) => AudioBooksNotifier(),
+      child: MaterialApp(
+        theme: ThemeData(
+          textTheme: TextTheme(
+            title: TextStyle(fontFamily: "Aleo",fontWeight: FontWeight.bold),
+            subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
 
+          ),
+          buttonColor: Theme.of(context).accentColor,
+          primarySwatch: Colors.pink,
+          accentColor: Colors.indigoAccent
         ),
-        buttonColor: Theme.of(context).accentColor,
-        primarySwatch: Colors.pink,
-        accentColor: Colors.indigoAccent
+        home: HomePage(),
       ),
-      home: HomePage(),
     );
   }
 }
@@ -37,12 +39,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _scrollController = ScrollController();
-  final BookBloc _bookBloc = BookBloc();
   final _scrollThreshold = 200.0;
 
   _HomePageState() {
     _scrollController.addListener(_onScroll);
-    _bookBloc.dispatch(FetchBook());
   }
 
   @override
@@ -55,53 +55,35 @@ class _HomePageState extends State<HomePage> {
         onPressed: (){},
         child: Icon(Icons.today),
       ),
-      body: BlocBuilder(
-        bloc: _bookBloc,
-        builder: (BuildContext context, BookState state){
-          if (state is BookUninitialized) {
+      body: Consumer(
+        builder: (BuildContext context, AudioBooksNotifier notifier, _){
+          if (notifier.books.isEmpty) {
             return Center(
-              child: CircularProgressIndicator(),
+              child: Text('no posts'),
             );
           }
-          if (state is BookInitialized) {
-            if (state.hasError) {
-              return Center(
-                child: Text('failed to fetch posts'),
-              );
+          return ListView.builder(
+            controller: _scrollController,
+            itemCount: notifier.hasReachedMax
+              ? notifier.books.length
+              : notifier.books.length + 1,
+            itemBuilder: (context,index){
+              return index >= notifier.books.length
+                ? BottomLoader()
+                : _buildBookItem(context,index,notifier.books);
             }
-            if (state.books.isEmpty) {
-              return Center(
-                child: Text('no posts'),
-              );
-            }
-            return ListView.builder(
-              controller: _scrollController,
-              itemCount: state.hasReachedMax
-                ? state.books.length
-                : state.books.length + 1,
-              itemBuilder: (context,index){
-                return index >= state.books.length
-                  ? BottomLoader()
-                  : _buildBookItem(context,index,state.books);
-              }
-            );
-          }
+          );
         },
       )
     );
   }
 
-  @override
-  void dispose() {
-    _bookBloc.dispose();
-    super.dispose();
-  }
 
   void _onScroll() {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     if (maxScroll - currentScroll <= _scrollThreshold) {
-      _bookBloc.dispatch(FetchBook());
+      Provider.of<AudioBooksNotifier>(context).getBooks();
     }
   }
 
