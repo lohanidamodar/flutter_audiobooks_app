@@ -27,8 +27,8 @@ dependencies:
   flutter_bloc: ^0.9.1
   sqflite: ^1.1.5
   flutter_html: ^0.10.1+hotfix.1
-  # media_player: ^0.0.6
   provider: ^3.0.0+1
+  audioplayers: ^0.13.1
 
 
 dev_dependencies:
