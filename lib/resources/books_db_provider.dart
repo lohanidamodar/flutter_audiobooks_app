@@ -17,42 +17,44 @@ class DatabaseHelper implements Cache{
   final String authorTable = "authors";
   static final String audioFilesTable = "audiofiles";
   
-  static final String columnId = "id";
+  static final String columnId = "identifier";
   static final String columnTitle="title";
-  
+
   static final String bookDescriptionColumn="description";
-  static final String bookUrlTextSourceColumn="url_text_source";
-  static final String bookLanguageColumn="language";
-  static final String bookUrlRSSColumn="url_rss";
-  static final String bookUrlZipFileColumn="url_zip_file";
-  static final String bookTotalTimeColumn="totaltime";
-  static final String bookTotalTimeSecsColumn="totaltimesecs";
-  static final String bookAuthorsColumn="authors";
+  static final String bookRuntimeColumn="runtime";
+  static final String bookCreatorColumn="creator";
+  static final String bookDateColumn="date";
+  static final String bookDownloadsColumn="downloads";
+  static final String bookSubjectColumn="subject";
+  static final String bookItemSizeColumn="item_size";
+  static final String bookAvgRatingColumn="avg_rating";
+  static final String bookNumReviewsColumn="num_reviews";
 
   static final String audioFileBookIdColumn = "book_id";
-  static final String audioFileLinkColumn = "link";
+  static final String audioFileUrlColumn = "url";
 
   final String createAudiofilesTable = """
     CREATE TABLE $audioFilesTable (
       $columnId INTEGER PRIMARY KEY,
       $columnTitle TEXT,
-      $audioFileLinkColumn TEXT,
-      $audioFileBookIdColumn INTEGER 
+      $audioFileUrlColumn TEXT,
+      $audioFileBookIdColumn TEXT 
     );
   """;
 
   final String createBooksTable = """
     CREATE TABLE $bookTable (
-      $columnId INTEGER PRIMARY KEY,
+      $columnId TEXT PRIMARY KEY,
       $columnTitle TEXT,
       $bookDescriptionColumn TEXT,
-      $bookLanguageColumn TEXT,
-      $bookUrlTextSourceColumn TEXT,
-      $bookUrlRSSColumn TEXT,
-      $bookUrlZipFileColumn TEXT,
-      $bookTotalTimeColumn TEXT,
-      $bookTotalTimeSecsColumn number,
-      $bookAuthorsColumn TEXT
+      $bookCreatorColumn TEXT,
+      $bookRuntimeColumn TEXT,
+      $bookDateColumn TEXT,
+      $bookDownloadsColumn INTEGER,
+      $bookSubjectColumn TEXT,
+      $bookItemSizeColumn INTEGER,
+      $bookAvgRatingColumn TEXT,
+      $bookNumReviewsColumn INTEGER
     );
   """;
 
@@ -93,7 +95,7 @@ class DatabaseHelper implements Cache{
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
     var res = await dbClient.rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
-    return Book.fromDBArray(res);
+    return Book.fromJsonArray(res);
   }
 
   Future close() async {

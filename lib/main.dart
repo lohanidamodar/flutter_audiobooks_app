@@ -96,7 +96,7 @@ class _HomePageState extends State<HomePage> {
         child: CachedNetworkImage(imageUrl: book.image),
       ),
       title: BookTitle(book.title),
-      subtitle: Text(Author.listToString(book.authors), style: Theme.of(context).textTheme.subtitle),
+      subtitle: Text(book.author, style: Theme.of(context).textTheme.subtitle),
     );
   }
 

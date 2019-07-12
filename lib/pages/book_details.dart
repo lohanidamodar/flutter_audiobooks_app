@@ -1,4 +1,3 @@
-import 'package:audiobooks/resources/books_api_provider.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/player_widget.dart';
@@ -29,7 +28,7 @@ class DetailPageState extends State<DetailPage> {
   _downloadBook() async{
     var path = await getApplicationDocumentsDirectory();
     taskId = await FlutterDownloader.enqueue(
-      url: widget.book.urlZipFile,
+      url: widget.book.id,
       savedDir: path.path,
       showNotification: true, // show download progress in status bar (for Android)
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
@@ -48,7 +47,7 @@ class DetailPageState extends State<DetailPage> {
   }
 
   Future<List<AudioFile>>_getRssFeeds() {
-    return Repository().fetchAudioFiles(widget.book.id,widget.book.urlRSS);
+    // return Repository().fetchAudioFiles(widget.book.id,widget.book.urlRSS);
   }
 
   @override
