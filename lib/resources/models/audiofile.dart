@@ -15,7 +15,7 @@ class AudioFile{
     bookId=json["book_id"],
     title=json["title"],
     name=json["name"],
-    track=int.parse(json["track"]),
+    track=int.parse(json["track"].split("/")[0]),
     size=int.parse(json["size"]),
     length=double.parse(json["length"]),
     url="$_base/${json['book_id']}/${json['name']}";
