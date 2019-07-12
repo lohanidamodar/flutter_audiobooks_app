@@ -20,6 +20,7 @@ class AudioBooksNotifier with ChangeNotifier {
   AudioBooksNotifier() {
     if(_books.isEmpty)
       getBooks();
+      getTopBooks();
   }
 
   
