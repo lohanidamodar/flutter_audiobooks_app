@@ -1,7 +1,7 @@
 import 'package:audiobooks/pages/book_details.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
-import 'package:audiobooks/widgets/title.dart';
+import 'package:audiobooks/widgets/book_grid_item.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,13 +25,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Audio Books"),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: (){},
-        child: Icon(Icons.today),
-      ),
       body: Consumer(
         builder: (BuildContext context, AudioBooksNotifier notifier, _){
           if (notifier.books.isEmpty) {
@@ -39,16 +32,53 @@ class _HomePageState extends State<HomePage> {
               child: Text('no posts'),
             );
           }
-          return ListView.builder(
+          return CustomScrollView(
             controller: _scrollController,
-            itemCount: notifier.hasReachedMax
-              ? notifier.books.length
-              : notifier.books.length + 1,
-            itemBuilder: (context,index){
-              return index >= notifier.books.length
-                ? BottomLoader()
-                : _buildBookItem(context,index,notifier.books);
-            }
+            slivers: <Widget>[
+              SliverAppBar(
+                title: Text("Books"),
+                floating: true,
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverToBoxAdapter(
+                  child: Text("Most Downloaded"),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16.0,
+                    mainAxisSpacing: 16.0
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => BookGridItem(book: notifier.topBooks[index], onTap: () => _openDetail(context, notifier.topBooks[index]),),
+                    childCount: notifier.topBooks.length,
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverToBoxAdapter(
+                  child: Text("Recent Books"),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(16.0),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => index >= notifier.books.length
+                      ? BottomLoader()
+                      : _buildBookItem(context,index,notifier.books),
+                    childCount: notifier.hasReachedMax
+                      ? notifier.books.length
+                      : notifier.books.length + 1,
+                  ),
+                ),
+              ),
+            ],
           );
         },
       )
@@ -66,13 +96,18 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBookItem(BuildContext context, int index, List<Book> books) {
     Book book = books[index];
-    return ListTile(
-      onTap: () => _openDetail(context,book),
-      leading: CircleAvatar(
-        child: CachedNetworkImage(imageUrl: book.image),
-      ),
-      title: BookTitle(book.title),
-      subtitle: Text(book.author, style: Theme.of(context).textTheme.subtitle),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        ListTile(
+          title: Text(book.title),
+          leading: CircleAvatar(
+            backgroundImage: CachedNetworkImageProvider(book.image),
+          ),
+          onTap: () => _openDetail(context,book),
+        ),
+        Divider(),
+      ],
     );
   }
 
