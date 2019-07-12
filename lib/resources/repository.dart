@@ -18,7 +18,7 @@ class Repository {
     books = await caches[0].getBooks(offset, limit);
     if(books.length <= 0){
       books = await sources[0].fetchBooks(offset,limit);
-      // caches[0].saveBooks(books);
+      caches[0].saveBooks(books);
     }
     return books;
   }
@@ -33,7 +33,7 @@ class Repository {
     audiofiles = await caches[0].fetchAudioFiles(bookId);
     if(audiofiles.length <=0 ) {
       audiofiles = await sources[0].fetchAudioFiles(bookId);
-      // caches[0].saveAudioFiles(audiofiles);
+      caches[0].saveAudioFiles(audiofiles);
     }
     return audiofiles;
   }

@@ -20,6 +20,15 @@ class AudioFile{
     length=double.parse(json["length"]),
     url="$_base/${json['book_id']}/${json['name']}";
 
+  AudioFile.fromDB(Map json):
+    bookId=json["book_id"],
+    title=json["title"],
+    name=json["name"],
+    track=json["track"],
+    size=json["size"],
+    length=json["length"],
+    url=json["url"];
+
   static List<AudioFile> fromJsonArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
     json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
@@ -27,20 +36,20 @@ class AudioFile{
   }
   static List<AudioFile> fromDBArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
+    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromDB(audiofile)));
     return audiofiles;
   }
 
   Map<String,dynamic> toMap(){
-      return {
-        "name":name,
-        "book_id":bookId,
-        "url":url,
-        "title":title,
-        "length":length,
-        "track":track,
-        "size":size
-      };
+    return {
+      "name":name,
+      "book_id":bookId,
+      "url":url,
+      "title":title,
+      "length":length,
+      "track":track,
+      "size":size
+    };
   }
 
   String toJson() {

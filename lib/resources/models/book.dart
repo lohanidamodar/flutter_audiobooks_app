@@ -31,6 +31,19 @@ class Book {
     reviews=jsonBook["num_reviews"],
     description=jsonBook["description"];
 
+  Book.fromDB(Map jsonBook):
+    id=jsonBook["identifier"],
+    title=jsonBook["title"],
+    totalTime=jsonBook["runtime"],
+    author=jsonBook["creator"],
+    date=DateTime.fromMillisecondsSinceEpoch(jsonBook["date"]),
+    downloads=jsonBook["downloads"],
+    subject=jsonBook["subject"],
+    size=jsonBook["item_size"],
+    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
+    reviews=jsonBook["num_reviews"],
+    description=jsonBook["description"];
+
   static List<Book> fromJsonArray(List jsonBook) {
     List<Book> books = List<Book>();
     jsonBook.forEach((book)=>books.add(Book.fromJson(book)));
@@ -44,9 +57,9 @@ class Book {
       "description":description,
       "runtime":totalTime,
       "creator":author,
-      "date":date,
+      "date":date.millisecondsSinceEpoch.toString(),
       "downloads":downloads,
-      "subject":subject,
+      "subject":subject.join(";"),
       "item_size":size,
       "avg_rating":rating,
       "num_reviews":reviews,

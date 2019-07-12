@@ -30,15 +30,22 @@ class DatabaseHelper implements Cache{
   static final String bookAvgRatingColumn="avg_rating";
   static final String bookNumReviewsColumn="num_reviews";
 
-  static final String audioFileBookIdColumn = "book_id";
-  static final String audioFileUrlColumn = "url";
+  static final String afBookIdColumn = "book_id";
+  static final String afUrlColumn = "url";
+  static final String afNameColumn = "name";
+  static final String afLengthColumn = "length";
+  static final String afTrackColumn = "track";
+  static final String afSizeColumn = "size";
 
   final String createAudiofilesTable = """
     CREATE TABLE $audioFilesTable (
-      $columnId INTEGER PRIMARY KEY,
+      $afNameColumn TEXT PRIMARY KEY,
       $columnTitle TEXT,
-      $audioFileUrlColumn TEXT,
-      $audioFileBookIdColumn TEXT 
+      $afUrlColumn TEXT,
+      $afBookIdColumn TEXT,
+      $afLengthColumn FLOAT,
+      $afTrackColumn INTEGER,
+      $afSizeColumn INTEGER
     );
   """;
 
@@ -51,10 +58,10 @@ class DatabaseHelper implements Cache{
       $bookRuntimeColumn TEXT,
       $bookDateColumn TEXT,
       $bookDownloadsColumn INTEGER,
-      $bookSubjectColumn TEXT,
       $bookItemSizeColumn INTEGER,
       $bookAvgRatingColumn TEXT,
-      $bookNumReviewsColumn INTEGER
+      $bookNumReviewsColumn INTEGER,
+      $bookSubjectColumn TEXT
     );
   """;
 
@@ -111,7 +118,7 @@ class DatabaseHelper implements Cache{
   @override
   Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
     var dbClient = await db;
-    var res = await dbClient.query(audioFilesTable,where: " $audioFileBookIdColumn = ?", whereArgs: [bookId]);
+    var res = await dbClient.query(audioFilesTable,where: " $afBookIdColumn = ?", whereArgs: [bookId]);
     return AudioFile.fromDBArray(res);
   }
 
