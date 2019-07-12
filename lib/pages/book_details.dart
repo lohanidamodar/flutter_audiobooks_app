@@ -1,4 +1,3 @@
-import 'package:audiobooks/resources/books_api_provider.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/player_widget.dart';
@@ -29,7 +28,7 @@ class DetailPageState extends State<DetailPage> {
   _downloadBook() async{
     var path = await getApplicationDocumentsDirectory();
     taskId = await FlutterDownloader.enqueue(
-      url: widget.book.urlZipFile,
+      url: widget.book.id,
       savedDir: path.path,
       showNotification: true, // show download progress in status bar (for Android)
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
@@ -48,7 +47,7 @@ class DetailPageState extends State<DetailPage> {
   }
 
   Future<List<AudioFile>>_getRssFeeds() {
-    return Repository().fetchAudioFiles(widget.book.id,widget.book.urlRSS);
+    return Repository().fetchAudioFiles(widget.book.id);
   }
 
   @override
@@ -57,62 +56,73 @@ class DetailPageState extends State<DetailPage> {
       appBar: AppBar(
         title: Text(widget.book.title),
       ),
-      body: Column(
+      body: Stack(
         children: <Widget>[
-          Container(height: 200,
-            child: CachedNetworkImage(
-              imageUrl: widget.book.image, fit: BoxFit.contain),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.all(20.0),
-              children: <Widget>[
-                BookTitle(widget.book.title),
-                SizedBox(height: 5.0,),
-                Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle,),
-                SizedBox(height: 10.0,),
-                Html(
-                  defaultTextStyle: Theme.of(context).textTheme.body1.merge(TextStyle(fontSize: 18)),
-                  data: widget.book.description,
+          ListView(
+            padding: EdgeInsets.fromLTRB(20.0,20.0,20.0, url != null ? 70 : 20),
+            children: <Widget>[
+               Container(height: 100,
+                child: Row(
+                  children: <Widget>[
+                    Hero(
+                      tag: "${widget.book.id}_image",
+                      child: CachedNetworkImage(
+                        imageUrl: widget.book.image, fit: BoxFit.contain),
+                    ),
+                    SizedBox(width: 20.0),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          BookTitle(widget.book.title),
+                          Text("${widget.book.author}", style: Theme.of(context).textTheme.subtitle.copyWith(),),
+                          SizedBox(height: 5.0,),
+                          Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle,),
+                        ],
+                      ),
+                    )
+                  ],
                 ),
+              ),
 
-                SizedBox(height: 20,),
-                RaisedButton.icon(
-                  icon: Icon(Icons.file_download),
-                  onPressed: _downloadBook,
-                  label: Text("Download whole book"),
+              SizedBox(height: 20,),
+              Container(
+                child: FutureBuilder(
+                  future: _getRssFeeds(),
+                  builder: (BuildContext context, AsyncSnapshot<List<AudioFile>> snapshot){
+                    if(snapshot.hasData){
+                      return Column(
+                        children: snapshot.data.map((item)=>ListTile(
+                          title: Text(item.title),
+                          leading: Icon(Icons.play_circle_filled),
+                          onTap: () {
+                            setState(() {
+                              url = item.url;
+                              title = item.title;
+                            });
+                          },
+                        )).toList(),
+                      );
+                    }else{
+                      return CircularProgressIndicator();
+                    }
+
+                  },
                 ),
-                Container(
-                  child: FutureBuilder(
-                    future: _getRssFeeds(),
-                    builder: (BuildContext context, AsyncSnapshot<List<AudioFile>> snapshot){
-                      if(snapshot.hasData){
-                        return Column(
-                          children: snapshot.data.map((item)=>ListTile(
-                            title: Text(item.title),
-                            leading: Icon(Icons.play_circle_filled),
-                            onTap: () {
-                              setState(() {
-                                url = item.link;
-                                title = item.title;
-                              });
-                            },
-                          )).toList(),
-                        );
-                      }else{
-                        return CircularProgressIndicator();
-                      }
-
-                    },
-                  ),
-                )
-              ],
-            ),
+              )
+            ],
           ),
           if(url != null)
-          Container(
-            color: Colors.grey.shade300,
-            child: PlayerWidget(key: Key(url),url: url, title: title,),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.grey.shade300,
+              child: PlayerWidget(key: Key(url),url: url, title: title,),
+            ),
           ),
         ],
       )

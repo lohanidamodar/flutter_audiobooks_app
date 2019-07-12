@@ -1,25 +1,33 @@
-import 'package:meta/meta.dart';
 import 'dart:convert';
 
+const String _base = "https://archive.org/download";
 class AudioFile{
   final String bookId;
   final String title;
-  final String link;
-  final String id;
+  final String name;
+  final String url;
+  final double length;
+  final int track;
+  final int size;
 
-  AudioFile({@required this.bookId, @required this.title, @required this.link, this.id});
 
   AudioFile.fromJson(Map json):
-    id=json["id"],
     bookId=json["book_id"],
     title=json["title"],
-    link=json["link"];
+    name=json["name"],
+    track=int.parse(json["track"].split("/")[0]),
+    size=int.parse(json["size"]),
+    length=double.parse(json["length"]),
+    url="$_base/${json['book_id']}/${json['name']}";
 
-  AudioFile.fromDB(Map dbAudio):
-    id=dbAudio["id"].toString(),
-    bookId=dbAudio["book_id"].toString(),
-    title=dbAudio["title"],
-    link=dbAudio["link"];
+  AudioFile.fromDB(Map json):
+    bookId=json["book_id"],
+    title=json["title"],
+    name=json["name"],
+    track=json["track"],
+    size=json["size"],
+    length=json["length"],
+    url=json["url"];
 
   static List<AudioFile> fromJsonArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
@@ -33,21 +41,15 @@ class AudioFile{
   }
 
   Map<String,dynamic> toMap(){
-    if(id == null) {
-      return {
-        "book_id":bookId,
-        "link":link,
-        "title":title,
-      };
-    }else {
-      return {
-        "id":id,
-        "book_id":bookId,
-        "link":link,
-        "title":title,
-      };
-
-    }
+    return {
+      "name":name,
+      "book_id":bookId,
+      "url":url,
+      "title":title,
+      "length":length,
+      "track":track,
+      "size":size
+    };
   }
 
   String toJson() {
