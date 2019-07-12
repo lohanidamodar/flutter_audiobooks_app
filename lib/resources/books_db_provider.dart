@@ -17,42 +17,51 @@ class DatabaseHelper implements Cache{
   final String authorTable = "authors";
   static final String audioFilesTable = "audiofiles";
   
-  static final String columnId = "id";
+  static final String columnId = "identifier";
   static final String columnTitle="title";
-  
-  static final String bookDescriptionColumn="description";
-  static final String bookUrlTextSourceColumn="url_text_source";
-  static final String bookLanguageColumn="language";
-  static final String bookUrlRSSColumn="url_rss";
-  static final String bookUrlZipFileColumn="url_zip_file";
-  static final String bookTotalTimeColumn="totaltime";
-  static final String bookTotalTimeSecsColumn="totaltimesecs";
-  static final String bookAuthorsColumn="authors";
 
-  static final String audioFileBookIdColumn = "book_id";
-  static final String audioFileLinkColumn = "link";
+  static final String bookDescriptionColumn="description";
+  static final String bookRuntimeColumn="runtime";
+  static final String bookCreatorColumn="creator";
+  static final String bookDateColumn="date";
+  static final String bookDownloadsColumn="downloads";
+  static final String bookSubjectColumn="subject";
+  static final String bookItemSizeColumn="item_size";
+  static final String bookAvgRatingColumn="avg_rating";
+  static final String bookNumReviewsColumn="num_reviews";
+
+  static final String afBookIdColumn = "book_id";
+  static final String afUrlColumn = "url";
+  static final String afNameColumn = "name";
+  static final String afLengthColumn = "length";
+  static final String afTrackColumn = "track";
+  static final String afSizeColumn = "size";
 
   final String createAudiofilesTable = """
     CREATE TABLE $audioFilesTable (
-      $columnId INTEGER PRIMARY KEY,
+      $afNameColumn TEXT PRIMARY KEY,
       $columnTitle TEXT,
-      $audioFileLinkColumn TEXT,
-      $audioFileBookIdColumn INTEGER 
+      $afUrlColumn TEXT,
+      $afBookIdColumn TEXT,
+      $afLengthColumn FLOAT,
+      $afTrackColumn INTEGER,
+      $afSizeColumn INTEGER
     );
   """;
 
   final String createBooksTable = """
     CREATE TABLE $bookTable (
-      $columnId INTEGER PRIMARY KEY,
+      $columnId TEXT PRIMARY KEY,
       $columnTitle TEXT,
       $bookDescriptionColumn TEXT,
-      $bookLanguageColumn TEXT,
-      $bookUrlTextSourceColumn TEXT,
-      $bookUrlRSSColumn TEXT,
-      $bookUrlZipFileColumn TEXT,
-      $bookTotalTimeColumn TEXT,
-      $bookTotalTimeSecsColumn number,
-      $bookAuthorsColumn TEXT
+      $bookCreatorColumn TEXT,
+      $bookRuntimeColumn TEXT,
+      $bookDateColumn TEXT,
+      $bookDownloadsColumn INTEGER,
+      $bookItemSizeColumn INTEGER,
+      $bookAvgRatingColumn TEXT,
+      $bookNumReviewsColumn INTEGER,
+      $bookSubjectColumn TEXT
     );
   """;
 
@@ -79,10 +88,16 @@ class DatabaseHelper implements Cache{
 
   // insert
   Future<int> saveBook(Book book) async {
-    var dbClient = await db;
-    int result = await dbClient.insert(bookTable, book.toMap());
-    return result;
+    try {
+      var dbClient = await db;
+      int result = await dbClient.insert(bookTable, book.toMap());
+      return result;
+    }catch(e){
+      print(e);
+    }
+    return null;
   }
+
   Future<int> saveAudioFile(AudioFile audiofile) async {
     var dbClient = await db;
     int result = await dbClient.insert(audioFilesTable, audiofile.toMap());
@@ -93,7 +108,7 @@ class DatabaseHelper implements Cache{
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
     var res = await dbClient.rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
-    return Book.fromDBArray(res);
+    return Book.fromDbArray(res);
   }
 
   Future close() async {
@@ -109,7 +124,7 @@ class DatabaseHelper implements Cache{
   @override
   Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
     var dbClient = await db;
-    var res = await dbClient.query(audioFilesTable,where: " $audioFileBookIdColumn = ?", whereArgs: [bookId]);
+    var res = await dbClient.query(audioFilesTable,where: " $afBookIdColumn = ?", whereArgs: [bookId]);
     return AudioFile.fromDBArray(res);
   }
 

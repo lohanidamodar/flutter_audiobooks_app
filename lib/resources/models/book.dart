@@ -1,70 +1,75 @@
-import 'dart:convert';
-
-import 'package:audiobooks/resources/models/author.dart';
-import 'package:meta/meta.dart';
+final imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
 
 class Book {
   final String title;
   final String id;
   final String description;
-  final String urlTextSource;
-  final String language;
-  final String urlRSS;
-  final String urlZipFile;
   final String totalTime;
-  final int totalTimeSecs;
-  final List<Author> authors;
-
-  Book({@required this.title, @required this.id, this.description, this.urlTextSource, this.language, this.urlRSS, this.urlZipFile, this.totalTime, this.totalTimeSecs, this.authors});
+  final String author;
+  final DateTime date;
+  final int downloads;
+  final List<dynamic> subject;
+  final int size;
+  final double rating;
+  final int reviews;
 
   Book.fromJson(Map jsonBook):
-    id=jsonBook["id"].toString(),
+    id=jsonBook["identifier"],
     title=jsonBook["title"],
-    description=jsonBook["description"],
-    urlTextSource=jsonBook["url_text_source"],
-    urlRSS=jsonBook["url_rss"],
-    urlZipFile=jsonBook["url_zip_file"],
-    language=jsonBook["language"],
-    totalTime=jsonBook["totaltime"],
-    totalTimeSecs=jsonBook["totaltimesecs"],
-    authors=Author.fromJsonArray(jsonBook['authors']);
+    totalTime=jsonBook["runtime"],
+    author=jsonBook["creator"],
+    date= jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
+    downloads=jsonBook["downloads"],
+    subject= jsonBook["subject"] is String ? [jsonBook["subject"]] : jsonBook["subject"],
+    size=jsonBook["item_size"],
+    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
+    reviews=jsonBook["num_reviews"],
+    description=jsonBook["description"];
 
-  Book.fromDB(Map dbBook):
-    id=dbBook["id"].toString(),
-    title=dbBook["title"],
-    description=dbBook["description"],
-    urlTextSource=dbBook["url_text_source"],
-    urlRSS=dbBook["url_rss"],
-    urlZipFile=dbBook["url_zip_file"],
-    language=dbBook["language"],
-    totalTime=dbBook["totaltime"],
-    totalTimeSecs=dbBook["totaltimesecs"],
-    authors=Author.fromJsonArray(json.decode(dbBook['authors']));
+  Book.fromDB(Map jsonBook):
+    id=jsonBook["identifier"],
+    title=jsonBook["title"],
+    totalTime=jsonBook["runtime"],
+    author=jsonBook["creator"],
+    date=DateTime.fromMillisecondsSinceEpoch(int.parse(jsonBook["date"])),
+    downloads=jsonBook["downloads"],
+    subject=jsonBook["subject"].split(';'),
+    size=jsonBook["item_size"],
+    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
+    reviews=jsonBook["num_reviews"],
+    description=jsonBook["description"];
+
 
   static List<Book> fromJsonArray(List jsonBook) {
     List<Book> books = List<Book>();
-    jsonBook.forEach((book)=>books.add(Book.fromJson(book)));
+    jsonBook.forEach((book)=> books.add(Book.fromJson(book)));
     return books;
   }
-
-  static List<Book> fromDBArray(List jsonBook) {
+  static List<Book> fromDbArray(List jsonBook) {
     List<Book> books = List<Book>();
     jsonBook.forEach((book)=>books.add(Book.fromDB(book)));
     return books;
   }
 
   Map<String,dynamic> toMap() {
-    var map = Map<String, dynamic>();
-    map['id'] = id;
-    map['title'] = title;
-    map['description'] = description;
-    map['url_text_source'] = urlTextSource;
-    map['url_rss'] = urlRSS;
-    map['url_zip_file'] = urlZipFile;
-    map['language'] = language;
-    map['totaltime'] = totalTime;
-    map['totaltimesecs'] = totalTimeSecs;
-    map['authors'] = Author.toJsonArray(authors);
-    return map;
+    return Map<String, dynamic>.from({
+      "identifier":id,
+      "title":title,
+      "description":description,
+      "runtime":totalTime,
+      "creator":author,
+      "date":date.millisecondsSinceEpoch.toString(),
+      "downloads":downloads,
+      "subject":subject.join(";"),
+      "item_size":size,
+      "avg_rating":rating,
+      "num_reviews":reviews,
+    });
   }
+
+  String getIdentifier() {
+    return id;
+  }
+
+  String get image => "$imageRoot${getIdentifier()}"; 
 }
