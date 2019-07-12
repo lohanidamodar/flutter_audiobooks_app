@@ -88,10 +88,16 @@ class DatabaseHelper implements Cache{
 
   // insert
   Future<int> saveBook(Book book) async {
-    var dbClient = await db;
-    int result = await dbClient.insert(bookTable, book.toMap());
-    return result;
+    try {
+      var dbClient = await db;
+      int result = await dbClient.insert(bookTable, book.toMap());
+      return result;
+    }catch(e){
+      print(e);
+    }
+    return null;
   }
+
   Future<int> saveAudioFile(AudioFile audiofile) async {
     var dbClient = await db;
     int result = await dbClient.insert(audioFilesTable, audiofile.toMap());
