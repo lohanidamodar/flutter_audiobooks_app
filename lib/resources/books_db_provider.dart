@@ -102,7 +102,7 @@ class DatabaseHelper implements Cache{
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
     var res = await dbClient.rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
-    return Book.fromJsonArray(res);
+    return Book.fromDbArray(res);
   }
 
   Future close() async {
