@@ -47,7 +47,7 @@ class DetailPageState extends State<DetailPage> {
   }
 
   Future<List<AudioFile>>_getRssFeeds() {
-    // return Repository().fetchAudioFiles(widget.book.id,widget.book.urlRSS);
+    return Repository().fetchAudioFiles(widget.book.id);
   }
 
   @override
@@ -92,7 +92,7 @@ class DetailPageState extends State<DetailPage> {
                             leading: Icon(Icons.play_circle_filled),
                             onTap: () {
                               setState(() {
-                                url = item.link;
+                                url = item.url;
                                 title = item.title;
                               });
                             },

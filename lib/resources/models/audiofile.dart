@@ -1,25 +1,24 @@
-import 'package:meta/meta.dart';
 import 'dart:convert';
 
+const String _base = "https://archive.org/download";
 class AudioFile{
   final String bookId;
   final String title;
-  final String link;
-  final String id;
+  final String name;
+  final String url;
+  final double length;
+  final int track;
+  final int size;
 
-  AudioFile({@required this.bookId, @required this.title, @required this.link, this.id});
 
   AudioFile.fromJson(Map json):
-    id=json["id"],
     bookId=json["book_id"],
     title=json["title"],
-    link=json["link"];
-
-  AudioFile.fromDB(Map dbAudio):
-    id=dbAudio["id"].toString(),
-    bookId=dbAudio["book_id"].toString(),
-    title=dbAudio["title"],
-    link=dbAudio["link"];
+    name=json["name"],
+    track=int.parse(json["track"]),
+    size=int.parse(json["size"]),
+    length=double.parse(json["length"]),
+    url="$_base/${json['book_id']}/${json['name']}";
 
   static List<AudioFile> fromJsonArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
@@ -28,26 +27,20 @@ class AudioFile{
   }
   static List<AudioFile> fromDBArray(List json) {
     List<AudioFile> audiofiles = List<AudioFile>();
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromDB(audiofile)));
+    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
     return audiofiles;
   }
 
   Map<String,dynamic> toMap(){
-    if(id == null) {
       return {
+        "name":name,
         "book_id":bookId,
-        "link":link,
+        "url":url,
         "title":title,
+        "length":length,
+        "track":track,
+        "size":size
       };
-    }else {
-      return {
-        "id":id,
-        "book_id":bookId,
-        "link":link,
-        "title":title,
-      };
-
-    }
   }
 
   String toJson() {

@@ -22,17 +22,16 @@ class ArchiveApiProvider implements Source{
     return Book.fromJsonArray(resJson['response']['docs']);
   }
 
-  Future<List<AudioFile>> fetchAudioFiles(String bookId, String url) async {
-    if(url == null) return null;
-    final response = await client.get(url);
-    final String feed = response.body;
-    RssFeed rssFeed = RssFeed.parse(feed);
+  Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
+    final response = await client.get("$_metadata/$bookId/files");
+    Map resJson = json.decode(response.body);
     List<AudioFile> afiles = List<AudioFile>();
-    rssFeed.items.forEach((item)=>afiles.add(AudioFile(
-      bookId: bookId,
-      title: item.title,
-      link: item.enclosure.url
-    )));
+    resJson["result"].forEach((item) {
+      if(item["source"] == "original" &&item["track"] != null) {
+        item["book_id"] = bookId;
+          afiles.add(AudioFile.fromJson(item));
+      }
+    });
     return afiles;
   }
 
