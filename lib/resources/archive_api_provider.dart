@@ -9,7 +9,7 @@ final _commonParams = "q=collection:(librivoxaudio)&fl=runtime,avg_rating,num_re
 
 final _latestBooksApi = "https://archive.org/advancedsearch.php?$_commonParams&sort[]=addeddate desc&output=json";
 
-final _highestRated = "https://archive.org/advancedsearch.php?$_commonParams&sort[]=avg_rating desc&rows=50&page=1&output=json";
+final _mostDownloaded = "https://archive.org/advancedsearch.php?$_commonParams&sort[]=downloads desc&rows=10&page=1&output=json";
   final query="title:(secret tomb) AND collection:(librivoxaudio)";
 
 class ArchiveApiProvider implements Source{
@@ -37,7 +37,7 @@ class ArchiveApiProvider implements Source{
 
   @override
   Future<List<Book>> topBooks() async {
-    final response = await client.get("$_highestRated");
+    final response = await client.get("$_mostDownloaded");
     Map resJson = json.decode(response.body);
     return Book.fromJsonArray(resJson['response']['docs']);
   }
