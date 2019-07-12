@@ -23,7 +23,7 @@ class Book {
     title=jsonBook["title"],
     totalTime=jsonBook["runtime"],
     author=jsonBook["creator"],
-    date=DateTime.parse(jsonBook["date"]),
+    date= jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
     downloads=jsonBook["downloads"],
     subject=jsonBook["subject"],
     size=jsonBook["item_size"],
@@ -47,7 +47,7 @@ class Book {
 
   static List<Book> fromJsonArray(List jsonBook) {
     List<Book> books = List<Book>();
-    jsonBook.forEach((book)=>books.add(Book.fromJson(book)));
+    jsonBook.forEach((book)=> book["runtime"] != null ? books.add(Book.fromJson(book)):'');
     return books;
   }
   static List<Book> fromDbArray(List jsonBook) {
