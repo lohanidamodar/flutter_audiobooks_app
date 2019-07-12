@@ -2,7 +2,6 @@ import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:http/http.dart' show Client;
 import 'dart:convert';
-import 'package:webfeed/webfeed.dart';
 
 final _metadata = "https://archive.org/metadata/";
 final _commonParams = "q=collection:(librivoxaudio)&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size";
