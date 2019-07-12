@@ -3,6 +3,7 @@ import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/player_widget.dart';
 import 'package:audiobooks/widgets/title.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'dart:async';
@@ -58,6 +59,10 @@ class DetailPageState extends State<DetailPage> {
       ),
       body: Column(
         children: <Widget>[
+          Container(height: 200,
+            child: CachedNetworkImage(
+              imageUrl: widget.book.image, fit: BoxFit.contain),
+          ),
           Expanded(
             child: ListView(
               padding: EdgeInsets.all(20.0),

@@ -3,6 +3,7 @@ import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/pages/book_details.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/widgets/title.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -92,7 +93,7 @@ class _HomePageState extends State<HomePage> {
     return ListTile(
       onTap: () => _openDetail(context,book),
       leading: CircleAvatar(
-        child: Text(book.title[0]),
+        child: CachedNetworkImage(imageUrl: book.image),
       ),
       title: BookTitle(book.title),
       subtitle: Text(Author.listToString(book.authors), style: Theme.of(context).textTheme.subtitle),

@@ -29,6 +29,7 @@ dependencies:
   flutter_html: ^0.10.1+hotfix.1
   provider: ^3.0.0+1
   audioplayers: ^0.13.1
+  cached_network_image: ^1.0.0
 
 
 dev_dependencies:
