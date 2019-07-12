@@ -1,8 +1,3 @@
-import 'dart:convert';
-
-import 'package:audiobooks/resources/models/author.dart';
-import 'package:meta/meta.dart';
-
 final imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
 
 class Book {
