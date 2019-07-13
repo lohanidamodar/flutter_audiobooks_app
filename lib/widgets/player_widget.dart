@@ -1,10 +1,14 @@
-import 'dart:async';
+/* import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audioplayer/audioplayer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 enum PlayerState { stopped, playing, paused }
+
+enum PlayerMode {
+  MEDIA_PLAYER
+}
 
 class PlayerWidget extends StatefulWidget {
   final String url;
@@ -23,6 +27,7 @@ class PlayerWidget extends StatefulWidget {
     return new _PlayerWidgetState(url, title,isLocal, mode,);
   }
 }
+
 
 class _PlayerWidgetState extends State<PlayerWidget> {
   String url;
@@ -212,4 +217,4 @@ class _PlayerWidgetState extends State<PlayerWidget> {
   void _onComplete() {
     setState(() => _playerState = PlayerState.stopped);
   }
-}
+} */

@@ -1,12 +1,16 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:audiobooks/resources/models/models.dart';
+import 'package:audiobooks/resources/player_res.dart';
 import 'package:audiobooks/resources/repository.dart';
+import 'package:audiobooks/widgets/player_service.dart';
 import 'package:audiobooks/widgets/player_widget.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter_downloader/flutter_downloader.dart';
+// import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DetailPage extends StatefulWidget {
   final Book book;
@@ -24,7 +28,7 @@ class DetailPageState extends State<DetailPage> {
   String url;
   String title;
 
-  _downloadBook() async{
+  /* _downloadBook() async{
     var path = await getApplicationDocumentsDirectory();
     taskId = await FlutterDownloader.enqueue(
       url: widget.book.id,
@@ -33,7 +37,7 @@ class DetailPageState extends State<DetailPage> {
       openFileFromNotification: true, // click on notification to open downloaded file (for Android)
     );
     await FlutterDownloader.loadTasks();
-  }
+  } */
 
   @override
   void initState() { 
@@ -96,7 +100,11 @@ class DetailPageState extends State<DetailPage> {
                         children: snapshot.data.map((item)=>ListTile(
                           title: Text(item.title),
                           leading: Icon(Icons.play_circle_filled),
-                          onTap: () {
+                          onTap: () async {
+                            if(url == item.url) AudioService.play();
+                            await (await SharedPreferences.getInstance()).setString("play_url", item.url);
+                            await stop();
+                            start();
                             setState(() {
                               url = item.url;
                               title = item.title;
@@ -120,7 +128,7 @@ class DetailPageState extends State<DetailPage> {
             bottom: 0,
             child: Container(
               color: Colors.grey.shade300,
-              child: PlayerWidget(key: Key(url),url: url, title: title,),
+              child: PlayerService(),
             ),
           ),
         ],
