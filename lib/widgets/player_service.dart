@@ -1,6 +1,5 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
 import '../resources/player_res.dart';
 
 class PlayerService extends StatelessWidget{
@@ -19,14 +18,16 @@ class PlayerService extends StatelessWidget{
                     Text("Connecting..."),
                   ] else
                     if (state?.basicState == BasicPlaybackState.playing) ...[
+                      prevButton(),
                       pauseButton(),
                       stopButton(),
-                      positionIndicator(state),
+                      nextButton(),
                     ] else
                       if (state?.basicState == BasicPlaybackState.paused) ...[
+                        prevButton(),
                         playButton(),
                         stopButton(),
-                        positionIndicator(state),
+                        nextButton(),
                       ] else ...[
                         audioPlayerButton(),
                       ],
@@ -37,39 +38,40 @@ class PlayerService extends StatelessWidget{
     );
   }
 
+
   RaisedButton audioPlayerButton() =>
-      startButton('AudioPlayer', backgroundAudioPlayerTask);
-
-
-  RaisedButton startButton(String label, Function backgroundTask) =>
       RaisedButton(
-        child: Text(label),
+        child: Text("Play"),
         onPressed: () {
           start();
         },
       );
 
-  IconButton playButton() => IconButton(
-        icon: Icon(Icons.play_arrow),
-        iconSize: 64.0,
-        onPressed: AudioService.play,
-      );
+  IconButton baseButton(IconData icon, Function onPressed) => IconButton(
+    color: Colors.pink,
+    iconSize: 32.0,
+    onPressed: onPressed,
+    icon: Icon(icon),
+  );
 
-  IconButton pauseButton() => IconButton(
-        icon: Icon(Icons.pause),
-        iconSize: 64.0,
-        onPressed: AudioService.pause,
-      );
-
-  IconButton stopButton() => IconButton(
-        icon: Icon(Icons.stop),
-        iconSize: 64.0,
-        onPressed: AudioService.stop,
-      );
-
-  Widget positionIndicator(PlaybackState state) => StreamBuilder(
-        stream: Observable.periodic(Duration(milliseconds: 200)),
-        builder: (context, snapshdot) =>
-            Text("${(state.currentPosition / 1000).toStringAsFixed(3)}"),
-      );
+  IconButton nextButton() => baseButton(
+    Icons.skip_next,
+    AudioService.skipToNext,
+  );
+  IconButton prevButton() => baseButton(
+    Icons.skip_previous,
+    AudioService.skipToPrevious,
+  );
+  IconButton playButton() => baseButton(
+    Icons.play_arrow,
+    AudioService.play,
+  );
+  IconButton pauseButton() => baseButton(
+    Icons.pause,
+    AudioService.pause,
+  );
+  IconButton stopButton() => baseButton(
+    Icons.stop,
+    AudioService.stop,
+  );
 }

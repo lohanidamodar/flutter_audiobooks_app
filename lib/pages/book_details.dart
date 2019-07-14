@@ -27,6 +27,8 @@ class DetailPageState extends State<DetailPage> {
   var taskId;
   String url;
   String title;
+  bool toplay;
+  StreamSubscription<PlaybackState> playbackStateListner;
 
   /* _downloadBook() async{
     var path = await getApplicationDocumentsDirectory();
@@ -42,10 +44,20 @@ class DetailPageState extends State<DetailPage> {
   @override
   void initState() { 
     super.initState();
+    toplay = false;
+    playbackStateListner = AudioService.playbackStateStream.listen((state){
+      if(state?.basicState == BasicPlaybackState.stopped)
+        if(toplay){
+          start();
+          if(mounted)
+            toplay = false;
+        }
+    });
   }
 
   @override
   void dispose() { 
+    playbackStateListner.cancel();
     super.dispose();
   }
 
@@ -103,7 +115,12 @@ class DetailPageState extends State<DetailPage> {
                           onTap: () async {
                             if(url == item.url) AudioService.play();
                             await (await SharedPreferences.getInstance()).setString("play_url", item.url);
-                            await stop();
+                            await (await SharedPreferences.getInstance()).setString("book_id", item.bookId);
+                            await (await SharedPreferences.getInstance()).setInt("track", snapshot.data.indexOf(item));
+                            setState(() {
+                              toplay = true;
+                            });
+                            AudioService.stop();
                             start();
                             setState(() {
                               url = item.url;
@@ -121,7 +138,6 @@ class DetailPageState extends State<DetailPage> {
               )
             ],
           ),
-          if(url != null)
           Positioned(
             left: 0,
             right: 0,
@@ -135,4 +151,5 @@ class DetailPageState extends State<DetailPage> {
       )
     );
   }
+  
 }

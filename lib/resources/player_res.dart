@@ -2,8 +2,13 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audioplayer/audioplayer.dart';
+import 'package:audiobooks/resources/books_db_provider.dart';
+import 'package:audiobooks/resources/models/book.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'models/audiofile.dart';
 
 
 MediaControl playControl = MediaControl(
@@ -21,23 +26,24 @@ MediaControl stopControl = MediaControl(
   label: 'Stop',
   action: MediaAction.stop,
 );
+MediaControl nextControl = MediaControl(
+  androidIcon: 'drawable/ic_skip_next',
+  label: 'Next',
+  action: MediaAction.skipToNext,
+);
+MediaControl prevControl = MediaControl(
+  androidIcon: 'drawable/ic_skip_previous',
+  label: 'Previous',
+  action: MediaAction.skipToPrevious,
+);
 
-
-Future<void> stop() async {
-  try {
-      await AudioService.stop();
-  }catch(e){
-    print(e);
-  }
-  return;
-}
-
-Future<void> start() async {
-  await AudioService.start(
+Future<bool> start() async {
+  print("starting");
+  return await AudioService.start(
     backgroundTask: backgroundAudioPlayerTask,
     androidNotificationChannelName: "AudioBooksApp",
-    resumeOnClick: true,
-    notificationColor: 0xFF2196f3,
+    resumeOnClick: false,
+    notificationColor: Colors.pink.value,
     androidNotificationIcon: 'mipmap/ic_launcher',
   );
 }
@@ -49,6 +55,8 @@ void backgroundAudioPlayerTask() async {
     onPlay: player.play,
     onPause: player.pause,
     onStop: player.stop,
+    onSkipToNext: player.next,
+    onSkipToPrevious: player.previous,
     onClick: (MediaButton button) => player.playPause(),
   );
 }
@@ -57,19 +65,20 @@ class CustomAudioPlayer {
   AudioPlayer _audioPlayer = new AudioPlayer();
   String streamUri =
       'http://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3';
+  String bookId;
+  int index = 0;
   Completer _completer = Completer();
   int _position;
-
+  List<AudioFile> audiofiles;
+  Book book;
+  
   Future<void> run() async {
     streamUri = (await SharedPreferences.getInstance()).getString("play_url");
+    bookId = (await SharedPreferences.getInstance()).getString("book_id");
+    index = (await SharedPreferences.getInstance()).getInt("track");
+    audiofiles = await DatabaseHelper().fetchAudioFiles(bookId);
+    book = await DatabaseHelper().getBook(bookId);
     
-    MediaItem mediaItem = MediaItem(
-        id: 'audio_1',
-        album: 'Sample Album',
-        title: 'Sample Title',
-        artist: 'Sample Artist');
-
-    AudioServiceBackground.setMediaItem(mediaItem);
 
     var playerStateSubscription = _audioPlayer.onPlayerStateChanged
         .where((state) => state == AudioPlayerState.COMPLETED)
@@ -95,7 +104,14 @@ class CustomAudioPlayer {
 
   void _setPlayingState() {
     AudioServiceBackground.setState(
-      controls: [pauseControl, stopControl],
+      controls: [
+        if(index > 0)
+          prevControl,
+        pauseControl,
+        stopControl,
+        if(index < audiofiles.length - 1)
+          nextControl
+      ],
       basicState: BasicPlaybackState.playing,
       position: _position,
     );
@@ -109,7 +125,15 @@ class CustomAudioPlayer {
   }
 
   void play() {
-    _audioPlayer.play(streamUri);
+    print("Playing track $index");
+    MediaItem mediaItem = MediaItem(
+        id: 'bookid',
+        album: book!= null ? book.title : "Unknown",
+        title: audiofiles[index].title,
+        artist: book != null ? book.author : "Unknown");
+
+    AudioServiceBackground.setMediaItem(mediaItem);
+    _audioPlayer.play(audiofiles[index].url);
     if (_position == null) {
       // There may be a delay while the AudioPlayer plugin connects.
       AudioServiceBackground.setState(
@@ -123,17 +147,53 @@ class CustomAudioPlayer {
     }
   }
 
+  void next() {
+    index++;
+    if(index == audiofiles.length) {
+      stop();
+      return;
+    }
+    _audioPlayer.stop();
+    AudioServiceBackground.setState(
+      controls: [],
+      basicState: BasicPlaybackState.stopped
+    );
+    play();
+  }
+
+  void previous() {
+    index--;
+    if(index < 0) {
+      stop();
+      return;
+    }
+    _audioPlayer.stop();
+    AudioServiceBackground.setState(
+      controls: [],
+      basicState: BasicPlaybackState.stopped
+    );
+    play();
+  }
+
   void pause() {
     _audioPlayer.pause();
     AudioServiceBackground.setState(
-      controls: [playControl, stopControl],
+      controls: [
+        if(index > 0)
+          prevControl,
+        pauseControl,
+        stopControl,
+        if(index < audiofiles.length - 1)
+          nextControl
+      ],
       basicState: BasicPlaybackState.paused,
       position: _position,
     );
   }
 
-  void stop() {
-    _audioPlayer.stop();
+  Future<void> stop() async {
+    _audioPlayer.release();
+    print("audioplayer released");
     AudioServiceBackground.setState(
       controls: [],
       basicState: BasicPlaybackState.stopped,

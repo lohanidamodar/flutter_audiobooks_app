@@ -17,7 +17,6 @@ dependencies:
   sqflite: ^1.1.5
   flutter_html: ^0.10.1+hotfix.1
   provider: ^3.0.0+1
-  audioplayer: ^0.5.2
   cached_network_image: ^1.0.0
   audio_service: ^0.3.0
   rxdart: ^0.22.0
@@ -29,10 +28,9 @@ dev_dependencies:
     sdk: flutter
 
 dependency_overrides:
-  audio_service:
-    path: ../audio_service
-  audioplayer:
-    path: ../audioplayer
+  audioplayers:
+    git:
+      url: https://github.com/lohanidamodar/audioplayers
 
 
 # For information on the generic Dart part of this file, see the
