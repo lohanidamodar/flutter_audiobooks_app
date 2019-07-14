@@ -121,6 +121,22 @@ class DatabaseHelper implements Cache{
     books.forEach((Book book)=>saveBook(book));
   }
 
+  Future<Book> getBook(String id) async{
+    var dbClient = await db;
+    final maps = await dbClient.query(
+      bookTable,
+      columns: null,
+      where:"$columnId = ?",
+      whereArgs: [id]
+    );
+
+    if (maps.length > 0){
+      return Book.fromDB(maps.first);
+    }
+
+    return null;
+  }
+
   @override
   Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
     var dbClient = await db;
