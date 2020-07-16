@@ -46,7 +46,7 @@ class DetailPageState extends State<DetailPage> {
     super.initState();
     toplay = false;
     playbackStateListner = AudioService.playbackStateStream.listen((state){
-      if(state?.basicState == BasicPlaybackState.stopped)
+      if(state?.processingState == AudioProcessingState.stopped)
         if(toplay){
           start();
           if(mounted)
@@ -113,14 +113,15 @@ class DetailPageState extends State<DetailPage> {
                           title: Text(item.title),
                           leading: Icon(Icons.play_circle_filled),
                           onTap: () async {
-                            if(url == item.url) AudioService.play();
-                            await (await SharedPreferences.getInstance()).setString("play_url", item.url);
-                            await (await SharedPreferences.getInstance()).setString("book_id", item.bookId);
-                            await (await SharedPreferences.getInstance()).setInt("track", snapshot.data.indexOf(item));
+                            // if(url == item.url) AudioService.play();
+                            SharedPreferences prefs = await SharedPreferences.getInstance();
+                            await prefs.setString("play_url", item.url);
+                            await prefs.setString("book_id", item.bookId);
+                            await prefs.setInt("track", snapshot.data.indexOf(item));
                             setState(() {
                               toplay = true;
                             });
-                            AudioService.stop();
+                            // AudioService.stop();
                             start();
                             setState(() {
                               url = item.url;

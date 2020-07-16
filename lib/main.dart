@@ -5,15 +5,18 @@ import 'package:provider/provider.dart';
 
 import 'pages/home_page.dart';
 
-void main() => runApp(AudioBooksApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(AudioServiceWidget(child: AudioBooksApp()));
+}
 
 class AudioBooksApp extends StatefulWidget {
   @override
   _AudioBooksAppState createState() => _AudioBooksAppState();
 }
 
-class _AudioBooksAppState extends State<AudioBooksApp> with WidgetsBindingObserver {
-  
+class _AudioBooksAppState extends State<AudioBooksApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     connect();
@@ -41,22 +44,20 @@ class _AudioBooksAppState extends State<AudioBooksApp> with WidgetsBindingObserv
         break;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      builder: (_) => AudioBooksNotifier(),
+      create: (_) => AudioBooksNotifier(),
       child: MaterialApp(
         theme: ThemeData(
-          textTheme: TextTheme(
-            title: TextStyle(fontFamily: "Aleo",fontWeight: FontWeight.bold),
-            subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
-
-          ),
-          buttonColor: Theme.of(context).accentColor,
-          primarySwatch: Colors.pink,
-          accentColor: Colors.indigoAccent
-        ),
+            textTheme: TextTheme(
+              title: TextStyle(fontFamily: "Aleo", fontWeight: FontWeight.bold),
+              subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
+            ),
+            buttonColor: Theme.of(context).accentColor,
+            primarySwatch: Colors.pink,
+            accentColor: Colors.indigoAccent),
         home: HomePage(),
       ),
     );

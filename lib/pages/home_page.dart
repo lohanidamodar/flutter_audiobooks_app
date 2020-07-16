@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     if (maxScroll - currentScroll <= _scrollThreshold) {
-      Provider.of<AudioBooksNotifier>(context).getBooks();
+      Provider.of<AudioBooksNotifier>(context,listen: false).getBooks();
     }
   }
 
