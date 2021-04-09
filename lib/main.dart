@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'pages/home_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(AudioServiceWidget(child: AudioBooksApp()));
 }

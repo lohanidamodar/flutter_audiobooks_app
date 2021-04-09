@@ -60,7 +60,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
   Book book;
 
   @override
-  void onStart(Map<String, dynamic> params) async {
+  Future<void> onStart(Map<String, dynamic> params) async {
     streamUri = (await SharedPreferences.getInstance()).getString("play_url");
     bookId = (await SharedPreferences.getInstance()).getString("book_id");
     index = (await SharedPreferences.getInstance()).getInt("track");
@@ -111,7 +111,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
     onSkipToPrevious: player.previous,
     onClick: (MediaButton button) => player.playPause(), */
 
-  void onClick(MediaButton button) {
+  onClick(MediaButton button) async {
     if (AudioServiceBackground.state.playing)
       onPause();
     else
@@ -119,7 +119,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
   }
 
   @override
-  void onPlay() {
+  onPlay() async {
     print("Playing track $index");
     MediaItem mediaItem = MediaItem(
         id: 'bookid',
@@ -143,7 +143,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
     }
   }
 
-  void onSkipToNext() {
+  onSkipToNext() async {
     index++;
     if (index == audiofiles.length) {
       onStop();
@@ -157,7 +157,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
     onPlay();
   }
 
-  void onSkipToPrevious() {
+  onSkipToPrevious() async {
     index--;
     if (index < 0) {
       onStop();
@@ -171,7 +171,7 @@ class CustomAudioPlayer extends BackgroundAudioTask {
     onPlay();
   }
 
-  void onPause() {
+  onPause() async {
     _audioPlayer.pause();
     AudioServiceBackground.setState(
       controls: [

@@ -13,57 +13,64 @@ class Book {
   final double rating;
   final int reviews;
 
-  Book.fromJson(Map jsonBook):
-    id=jsonBook["identifier"],
-    title=jsonBook["title"],
-    totalTime=jsonBook["runtime"],
-    author=jsonBook["creator"],
-    date= jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
-    downloads=jsonBook["downloads"],
-    subject= jsonBook["subject"] is String ? [jsonBook["subject"]] : jsonBook["subject"],
-    size=jsonBook["item_size"],
-    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
-    reviews=jsonBook["num_reviews"],
-    description=jsonBook["description"];
+  Book.fromJson(Map jsonBook)
+      : id = jsonBook["identifier"],
+        title = jsonBook["title"],
+        totalTime = jsonBook["runtime"],
+        author = jsonBook["creator"],
+        date =
+            jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
+        downloads = jsonBook["downloads"],
+        subject = jsonBook["subject"] is String
+            ? [jsonBook["subject"]]
+            : jsonBook["subject"],
+        size = jsonBook["item_size"],
+        rating = jsonBook["avg_rating"] != null
+            ? double.tryParse("${jsonBook["avg_rating"]}")
+            : null,
+        reviews = jsonBook["num_reviews"],
+        description = jsonBook["description"];
 
-  Book.fromDB(Map jsonBook):
-    id=jsonBook["identifier"],
-    title=jsonBook["title"],
-    totalTime=jsonBook["runtime"],
-    author=jsonBook["creator"],
-    date=DateTime.fromMillisecondsSinceEpoch(int.parse(jsonBook["date"])),
-    downloads=jsonBook["downloads"],
-    subject=jsonBook["subject"].split(';'),
-    size=jsonBook["item_size"],
-    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
-    reviews=jsonBook["num_reviews"],
-    description=jsonBook["description"];
-
+  Book.fromDB(Map jsonBook)
+      : id = jsonBook["identifier"],
+        title = jsonBook["title"],
+        totalTime = jsonBook["runtime"],
+        author = jsonBook["creator"],
+        date = DateTime.fromMillisecondsSinceEpoch(int.parse(jsonBook["date"])),
+        downloads = jsonBook["downloads"],
+        subject = jsonBook["subject"].split(';'),
+        size = jsonBook["item_size"],
+        rating = jsonBook["avg_rating"] != null
+            ? double.parse(jsonBook["avg_rating"])
+            : null,
+        reviews = jsonBook["num_reviews"],
+        description = jsonBook["description"];
 
   static List<Book> fromJsonArray(List jsonBook) {
-    List<Book> books = List<Book>();
-    jsonBook.forEach((book)=> books.add(Book.fromJson(book)));
-    return books;
-  }
-  static List<Book> fromDbArray(List jsonBook) {
-    List<Book> books = List<Book>();
-    jsonBook.forEach((book)=>books.add(Book.fromDB(book)));
+    List<Book> books = [];
+    jsonBook.forEach((book) => books.add(Book.fromJson(book)));
     return books;
   }
 
-  Map<String,dynamic> toMap() {
+  static List<Book> fromDbArray(List jsonBook) {
+    List<Book> books = [];
+    jsonBook.forEach((book) => books.add(Book.fromDB(book)));
+    return books;
+  }
+
+  Map<String, dynamic> toMap() {
     return Map<String, dynamic>.from({
-      "identifier":id,
-      "title":title,
-      "description":description,
-      "runtime":totalTime,
-      "creator":author,
-      "date":date.millisecondsSinceEpoch.toString(),
-      "downloads":downloads,
-      "subject":subject.join(";"),
-      "item_size":size,
-      "avg_rating":rating,
-      "num_reviews":reviews,
+      "identifier": id,
+      "title": title,
+      "description": description,
+      "runtime": totalTime,
+      "creator": author,
+      "date": date.millisecondsSinceEpoch.toString(),
+      "downloads": downloads,
+      "subject": subject.join(";"),
+      "item_size": size,
+      "avg_rating": rating,
+      "num_reviews": reviews,
     });
   }
 
@@ -71,5 +78,5 @@ class Book {
     return id;
   }
 
-  String get image => "$imageRoot${getIdentifier()}"; 
+  String get image => "$imageRoot${getIdentifier()}";
 }
