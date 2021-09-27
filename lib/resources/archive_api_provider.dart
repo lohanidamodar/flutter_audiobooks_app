@@ -16,13 +16,13 @@ class ArchiveApiProvider implements Source{
   Client client = Client();
 
   Future<List<Book>> fetchBooks(int offset, int limit) async {
-    final response = await client.get("$_latestBooksApi&rows=$limit&page=${offset/limit + 1}");
+    final response = await client.get(Uri.parse("$_latestBooksApi&rows=$limit&page=${offset/limit + 1}"));
     Map resJson = json.decode(response.body);
     return Book.fromJsonArray(resJson['response']['docs']);
   }
 
   Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
-    final response = await client.get("$_metadata/$bookId/files");
+    final response = await client.get(Uri.parse("$_metadata/$bookId/files"));
     Map resJson = json.decode(response.body);
     List<AudioFile> afiles = List<AudioFile>();
     resJson["result"].forEach((item) {
@@ -36,7 +36,7 @@ class ArchiveApiProvider implements Source{
 
   @override
   Future<List<Book>> topBooks() async {
-    final response = await client.get("$_mostDownloaded");
+    final response = await client.get(Uri.parse("$_mostDownloaded"));
     Map resJson = json.decode(response.body);
     return Book.fromJsonArray(resJson['response']['docs']);
   }

@@ -1,4 +1,5 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:audiobooks/main.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/player_res.dart';
 import 'package:audiobooks/resources/repository.dart';
@@ -45,10 +46,10 @@ class DetailPageState extends State<DetailPage> {
   void initState() { 
     super.initState();
     toplay = false;
-    playbackStateListner = AudioService.playbackStateStream.listen((state){
-      if(state?.processingState == AudioProcessingState.stopped)
+    playbackStateListner = audioHandler.playbackState.listen((state){
+      if(state?.processingState == AudioProcessingState.idle)
         if(toplay){
-          start();
+          // start();
           if(mounted)
             toplay = false;
         }
@@ -92,9 +93,9 @@ class DetailPageState extends State<DetailPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           BookTitle(widget.book.title),
-                          Text("${widget.book.author}", style: Theme.of(context).textTheme.subtitle.copyWith(),),
+                          Text("${widget.book.author}", style: Theme.of(context).textTheme.subtitle1.copyWith(),),
                           SizedBox(height: 5.0,),
-                          Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle,),
+                          Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle1,),
                         ],
                       ),
                     )
@@ -122,7 +123,7 @@ class DetailPageState extends State<DetailPage> {
                               toplay = true;
                             });
                             // AudioService.stop();
-                            start();
+                            // start();
                             setState(() {
                               url = item.url;
                               title = item.title;

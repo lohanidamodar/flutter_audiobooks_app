@@ -1,4 +1,5 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:audiobooks/main.dart';
 import 'package:flutter/material.dart';
 import '../resources/player_res.dart';
 
@@ -7,14 +8,14 @@ class PlayerService extends StatelessWidget {
   Widget build(BuildContext context) {
     return new Center(
       child: StreamBuilder(
-        stream: AudioService.playbackStateStream,
+        stream: audioHandler.playbackState,
         builder: (context, snapshot) {
           PlaybackState state = snapshot.data;
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (state?.processingState ==
-                  AudioProcessingState.connecting) ...[
+                  AudioProcessingState.loading) ...[
                 stopButton(),
                 Text("Connecting..."),
               ] else if (state?.playing ?? false) ...[
@@ -40,7 +41,7 @@ class PlayerService extends StatelessWidget {
   RaisedButton audioPlayerButton() => RaisedButton(
         child: Text("Play"),
         onPressed: () {
-          start();
+          // start();
         },
       );
 
