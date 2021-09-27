@@ -42,6 +42,7 @@ class PlayerService extends StatelessWidget {
         child: Text("Play"),
         onPressed: () {
           // start();
+          audioHandler.play();
         },
       );
 
@@ -54,22 +55,22 @@ class PlayerService extends StatelessWidget {
 
   IconButton nextButton() => baseButton(
         Icons.skip_next,
-        AudioService.skipToNext,
+        () => audioHandler.skipToNext()
       );
   IconButton prevButton() => baseButton(
         Icons.skip_previous,
-        AudioService.skipToPrevious,
+        () => audioHandler.skipToPrevious(),
       );
   IconButton playButton() => baseButton(
         Icons.play_arrow,
-        AudioService.play,
+        () => audioHandler.play(),
       );
   IconButton pauseButton() => baseButton(
         Icons.pause,
-        AudioService.pause,
+        () => audioHandler.pause(),
       );
   IconButton stopButton() => baseButton(
         Icons.stop,
-        AudioService.stop,
+        () => audioHandler.stop(),
       );
 }

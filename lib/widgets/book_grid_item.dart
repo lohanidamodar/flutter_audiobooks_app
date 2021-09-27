@@ -49,7 +49,7 @@ class BookGridItem extends StatelessWidget {
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold
                 ),),
-                Text(book.author, style: TextStyle(
+                Text(book.author ?? 'no author', style: TextStyle(
                   color: Colors.white,
                   fontSize: 12
                 ),)

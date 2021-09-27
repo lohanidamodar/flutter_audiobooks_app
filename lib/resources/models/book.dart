@@ -22,7 +22,7 @@ class Book {
     downloads=jsonBook["downloads"],
     subject= jsonBook["subject"] is String ? [jsonBook["subject"]] : jsonBook["subject"],
     size=jsonBook["item_size"],
-    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
+    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"].toString()) : null,
     reviews=jsonBook["num_reviews"],
     description=jsonBook["description"];
 
