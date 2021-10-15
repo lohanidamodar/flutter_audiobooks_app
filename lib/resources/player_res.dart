@@ -158,8 +158,7 @@ class CustomAudioPlayer extends BaseAudioHandler
   //     onPlay();
   // }
 
-
-@override
+  @override
   Future<void> play() => _player.play();
 
   @override
