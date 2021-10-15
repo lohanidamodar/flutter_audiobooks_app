@@ -23,7 +23,6 @@ class DetailPage extends StatefulWidget {
   }
 }
 
-
 class DetailPageState extends State<DetailPage> {
   var taskId;
   String url;
@@ -43,115 +42,133 @@ class DetailPageState extends State<DetailPage> {
   } */
 
   @override
-  void initState() { 
+  void initState() {
     super.initState();
     toplay = false;
-    playbackStateListner = audioHandler.playbackState.listen((state){
-      if(state?.processingState == AudioProcessingState.idle)
-        if(toplay){
-          // start();
-          if(mounted)
-            toplay = false;
-        }
+    playbackStateListner = audioHandler.playbackState.listen((state) {
+      if (state?.processingState == AudioProcessingState.idle) if (toplay) {
+        // start();
+        if (mounted) toplay = false;
+      }
     });
   }
 
   @override
-  void dispose() { 
+  void dispose() {
     playbackStateListner.cancel();
     super.dispose();
   }
 
-  Future<List<AudioFile>>_getRssFeeds() {
+  Future<List<AudioFile>> _getRssFeeds() {
     return Repository().fetchAudioFiles(widget.book.id);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.book.title),
-      ),
-      body: Stack(
-        children: <Widget>[
-          ListView(
-            padding: EdgeInsets.fromLTRB(20.0,20.0,20.0, url != null ? 70 : 20),
-            children: <Widget>[
-               Container(height: 100,
-                child: Row(
-                  children: <Widget>[
-                    Hero(
-                      tag: "${widget.book.id}_image",
-                      child: CachedNetworkImage(
-                        imageUrl: widget.book.image, fit: BoxFit.contain),
-                    ),
-                    SizedBox(width: 20.0),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          BookTitle(widget.book.title),
-                          Text("${widget.book.author}", style: Theme.of(context).textTheme.subtitle1.copyWith(),),
-                          SizedBox(height: 5.0,),
-                          Text("Total time: ${widget.book.totalTime}", style: Theme.of(context).textTheme.subtitle1,),
-                        ],
+        appBar: AppBar(
+          title: Text(widget.book.title),
+        ),
+        body: Stack(
+          children: <Widget>[
+            ListView(
+              padding:
+                  EdgeInsets.fromLTRB(20.0, 20.0, 20.0, url != null ? 70 : 20),
+              children: <Widget>[
+                Container(
+                  height: 100,
+                  child: Row(
+                    children: <Widget>[
+                      Hero(
+                        tag: "${widget.book.id}_image",
+                        child: CachedNetworkImage(
+                            imageUrl: widget.book.image, fit: BoxFit.contain),
                       ),
-                    )
-                  ],
+                      SizedBox(width: 20.0),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            BookTitle(widget.book.title),
+                            Text(
+                              "${widget.book.author}",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .subtitle1
+                                  .copyWith(),
+                            ),
+                            SizedBox(
+                              height: 5.0,
+                            ),
+                            Text(
+                              "Total time: ${widget.book.totalTime}",
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
                 ),
-              ),
-
-              SizedBox(height: 20,),
-              Container(
-                child: FutureBuilder(
-                  future: _getRssFeeds(),
-                  builder: (BuildContext context, AsyncSnapshot<List<AudioFile>> snapshot){
-                    if(snapshot.hasData){
-                      return Column(
-                        children: snapshot.data.map((item)=>ListTile(
-                          title: Text(item.title),
-                          leading: Icon(Icons.play_circle_filled),
-                          onTap: () async {
-                            // if(url == item.url) AudioService.play();
-                            SharedPreferences prefs = await SharedPreferences.getInstance();
-                            await prefs.setString("play_url", item.url);
-                            await prefs.setString("book_id", item.bookId);
-                            await prefs.setInt("track", snapshot.data.indexOf(item));
-                            setState(() {
-                              toplay = true;
-                            });
-                            // AudioService.stop();
-                            // start();
-                            setState(() {
-                              url = item.url;
-                              title = item.title;
-                            });
-                          },
-                        )).toList(),
-                      );
-                    }else{
-                      return CircularProgressIndicator();
-                    }
-
-                  },
+                SizedBox(
+                  height: 20,
                 ),
-              )
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              color: Colors.grey.shade300,
-              child: PlayerService(),
+                Container(
+                  child: FutureBuilder(
+                    future: _getRssFeeds(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<List<AudioFile>> snapshot) {
+                      if (snapshot.hasData) {
+                        return Column(
+                          children: snapshot.data
+                              .map((item) => ListTile(
+                                    title: Text(item.title),
+                                    leading: Icon(Icons.play_circle_filled),
+                                    onTap: () async {
+                                      // if(url == item.url) AudioService.play();
+                                      SharedPreferences prefs =
+                                          await SharedPreferences.getInstance();
+                                      await prefs.setString(
+                                          "play_url", item.url);
+                                      await prefs.setString(
+                                          "book_id", item.bookId);
+                                      await prefs.setInt(
+                                          "track", snapshot.data.indexOf(item));
+                                      setState(() {
+                                        toplay = true;
+                                      });
+                                      await audioHandler.prepare();
+                                      audioHandler.play();
+                                      // AudioService.stop();
+                                      // start();
+                                      setState(() {
+                                        url = item.url;
+                                        title = item.title;
+                                      });
+                                    },
+                                  ))
+                              .toList(),
+                        );
+                      } else {
+                        return CircularProgressIndicator();
+                      }
+                    },
+                  ),
+                )
+              ],
             ),
-          ),
-        ],
-      )
-    );
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.grey.shade300,
+                child: PlayerService(),
+              ),
+            ),
+          ],
+        ));
   }
-  
 }

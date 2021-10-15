@@ -49,25 +49,25 @@ class CustomAudioPlayer extends BaseAudioHandler
       'http://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3';
   String bookId;
   int index = 0;
-  Completer _completer = Completer();
-  Duration _position;
+  // Completer _completer = Completer();
+  // Duration _position;
   List<AudioFile> audiofiles;
   Book book;
 
-  static final _item = MediaItem(
-    id: 'https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3',
-    album: "Science Friday",
-    title: "A Salute To Head-Scratching Science",
-    artist: "Science Friday and WNYC Studios",
-    duration: const Duration(milliseconds: 5739820),
-    artUri: Uri.parse(
-        'https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg'),
-  );
+  // static final _item = MediaItem(
+  //   id: 'https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3',
+  //   album: "Science Friday",
+  //   title: "A Salute To Head-Scratching Science",
+  //   artist: "Science Friday and WNYC Studios",
+  //   duration: const Duration(milliseconds: 5739820),
+  //   artUri: Uri.parse(
+  //       'https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg'),
+  // );
 
   CustomAudioPlayer() {
-    mediaItem.add(_item);
+    // mediaItem.add(_item);
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
-    _player.setAudioSource(AudioSource.uri(Uri.parse(_item.id)));
+    // _player.setAudioSource(AudioSource.uri(Uri.parse(_item.id)));
   }
 
   PlaybackState _transformEvent(PlaybackEvent event) {
@@ -99,35 +99,35 @@ class CustomAudioPlayer extends BaseAudioHandler
     );
   }
 
-  // @override
-  // void onStart(Map<String, dynamic> params) async {
-  //   streamUri = (await SharedPreferences.getInstance()).getString("play_url");
-  //   bookId = (await SharedPreferences.getInstance()).getString("book_id");
-  //   index = (await SharedPreferences.getInstance()).getInt("track");
-  //   audiofiles = await DatabaseHelper().fetchAudioFiles(bookId);
-  //   book = await DatabaseHelper().getBook(bookId);
+  @override
+  Future prepare() async {
+    streamUri = (await SharedPreferences.getInstance()).getString("play_url");
+    bookId = (await SharedPreferences.getInstance()).getString("book_id");
+    index = (await SharedPreferences.getInstance()).getInt("track");
+    audiofiles = await DatabaseHelper().fetchAudioFiles(bookId);
+    book = await DatabaseHelper().getBook(bookId);
 
-  //   var playerStateSubscription = _audioPlayer.onPlayerStateChanged
-  //       .where((state) => state == AudioPlayerState.COMPLETED)
-  //       .listen((state) {
-  //     onStop();
-  //   });
-  //   var audioPositionSubscription =
-  //       _audioPlayer.onAudioPositionChanged.listen((when) {
-  //     final connected = _position == null;
-  //     _position = when;
-  //     if (connected) {
-  //       // After a delay, we finally start receiving audio positions
-  //       // from the AudioPlayer plugin, so we can set the state to
-  //       // playing.
-  //       _setPlayingState();
-  //     }
-  //   });
-  //   onPlay();
-  //   await _completer.future;
-  //   playerStateSubscription.cancel();
-  //   audioPositionSubscription.cancel();
-  // }
+    // var playerStateSubscription = _audioPlayer.onPlayerStateChanged
+    //     .where((state) => state == AudioPlayerState.COMPLETED)
+    //     .listen((state) {
+    //   onStop();
+    // });
+    // var audioPositionSubscription =
+    //     _audioPlayer.onAudioPositionChanged.listen((when) {
+    //   final connected = _position == null;
+    //   _position = when;
+    //   if (connected) {
+    //     // After a delay, we finally start receiving audio positions
+    //     // from the AudioPlayer plugin, so we can set the state to
+    //     // playing.
+    //     _setPlayingState();
+    //   }
+    // });
+    // onPlay();
+    // await _completer.future;
+    // playerStateSubscription.cancel();
+    // audioPositionSubscription.cancel();
+  }
 
   // void _setPlayingState() {
   //   AudioServiceBackground.setState(
@@ -159,7 +159,17 @@ class CustomAudioPlayer extends BaseAudioHandler
   // }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    print("Playing track $index");
+    final item = MediaItem(
+        id: bookId,
+        album: book != null ? book.title : "Unknown",
+        title: audiofiles[index].title,
+        artist: book != null ? book.author : "Unknown");
+    mediaItem.add(item);
+    await _player.setAudioSource(AudioSource.uri(Uri.parse(audiofiles[index].url)));
+     _player.play();
+  }
 
   @override
   Future<void> pause() => _player.pause();
