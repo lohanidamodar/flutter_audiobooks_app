@@ -106,7 +106,14 @@ class CustomAudioPlayer extends BaseAudioHandler
     index = (await SharedPreferences.getInstance()).getInt("track");
     audiofiles = await DatabaseHelper().fetchAudioFiles(bookId);
     book = await DatabaseHelper().getBook(bookId);
-
+    print("Playing track $index");
+    final item = MediaItem(
+        id: bookId,
+        album: book != null ? book.title : "Unknown",
+        title: audiofiles[index].title,
+        artist: book != null ? book.author : "Unknown");
+    mediaItem.add(item);
+    await _player.setAudioSource(AudioSource.uri(Uri.parse(audiofiles[index].url)));
     // var playerStateSubscription = _audioPlayer.onPlayerStateChanged
     //     .where((state) => state == AudioPlayerState.COMPLETED)
     //     .listen((state) {
@@ -160,14 +167,6 @@ class CustomAudioPlayer extends BaseAudioHandler
 
   @override
   Future<void> play() async {
-    print("Playing track $index");
-    final item = MediaItem(
-        id: bookId,
-        album: book != null ? book.title : "Unknown",
-        title: audiofiles[index].title,
-        artist: book != null ? book.author : "Unknown");
-    mediaItem.add(item);
-    await _player.setAudioSource(AudioSource.uri(Uri.parse(audiofiles[index].url)));
      _player.play();
   }
 
