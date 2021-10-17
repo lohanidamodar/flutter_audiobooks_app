@@ -14,6 +14,7 @@ public class MyApplication extends Application {
         disableSSLCertificateChecking();
     }
 
+    // disabling SSL valation, as archive uses Godaddy's SSL and Java seems not to validate those
     private static void disableSSLCertificateChecking() {
         TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
             public X509Certificate[] getAcceptedIssuers() {
