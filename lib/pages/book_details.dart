@@ -121,28 +121,50 @@ class DetailPageState extends State<DetailPage> {
                     builder: (BuildContext context,
                         AsyncSnapshot<List<AudioFile>> snapshot) {
                       if (snapshot.hasData) {
+                        final audios = snapshot.data;
                         return Column(
-                          children: snapshot.data
+                          children: audios
                               .map((item) => ListTile(
                                     title: Text(item.title),
                                     leading: Icon(Icons.play_circle_filled),
                                     onTap: () async {
-                                      // if(url == item.url) AudioService.play();
-                                      SharedPreferences prefs =
-                                          await SharedPreferences.getInstance();
-                                      await prefs.setString(
-                                          "play_url", item.url);
-                                      await prefs.setString(
-                                          "book_id", item.bookId);
-                                      await prefs.setInt(
-                                          "track", snapshot.data.indexOf(item));
-                                      setState(() {
-                                        toplay = true;
-                                      });
-                                      await audioHandler.prepare();
-                                      audioHandler.play();
+                                      // // if(url == item.url) AudioService.play();
+                                      // SharedPreferences prefs =
+                                      //     await SharedPreferences.getInstance();
+                                      // await prefs.setString(
+                                      //     "play_url", item.url);
+                                      // await prefs.setString(
+                                      //     "book_id", item.bookId);
+                                      // await prefs.setInt(
+                                      //     "track", snapshot.data.indexOf(item));
+                                      // setState(() {
+                                      //   toplay = true;
+                                      // });
+                                      // await audioHandler.prepare();
+                                      // audioHandler.play();
                                       // AudioService.stop();
                                       // start();
+                                      final mediaItems = audios
+                                          .map((chapter) => MediaItem(
+                                                id: chapter.url ?? '',
+                                                album: widget.book.title ?? '',
+                                                title: chapter.name ?? '',
+                                                extras: {
+                                                  'url': chapter.url,
+                                                  'bookId': chapter.bookId
+                                                },
+                                              ))
+                                          .toList();
+
+                                      // print('tap index $index');
+                                      // print('tap index media ${mediaItems.length}');
+                                      // print('tap index media ID=== ${mediaItems[index].title}');
+
+                                      await audioHandler
+                                          .updateQueue(mediaItems);
+                                      await audioHandler.skipToQueueItem(
+                                          audios.indexOf(item));
+                                      audioHandler.play();
                                       setState(() {
                                         url = item.url;
                                         title = item.title;

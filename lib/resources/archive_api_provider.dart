@@ -24,7 +24,7 @@ class ArchiveApiProvider implements Source{
   Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
     final response = await client.get(Uri.parse("$_metadata/$bookId/files"));
     Map resJson = json.decode(response.body);
-    List<AudioFile> afiles = List<AudioFile>();
+    List<AudioFile> afiles = [];
     resJson["result"].forEach((item) {
       if(item["source"] == "original" &&item["track"] != null) {
         item["book_id"] = bookId;

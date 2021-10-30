@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:audiobooks/pages/main_screen.dart';
+import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/resources/player_res.dart';
 import 'package:flutter/material.dart';
@@ -11,13 +12,7 @@ AudioHandler audioHandler;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  audioHandler = await AudioService.init(
-    builder: () => CustomAudioPlayer(),
-    config: AudioServiceConfig(
-      androidNotificationChannelId: 'com.popupbits.audiobooks.channel.audio',
-      androidNotificationChannelName: 'Music playback',
-    ),
-  );
+  audioHandler = await initAudioService();
   runApp(AudioBooksApp());
 }
 
