@@ -1,32 +1,61 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:audiobooks/main.dart';
+import 'package:audiobooks/widgets/seek_bar.dart';
 import 'package:flutter/material.dart';
-import '../resources/player_res.dart';
+import 'package:rxdart/rxdart.dart';
 
 class PlayerService extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return new Center(
-      child: StreamBuilder<bool>(
-        stream: audioHandler.playbackState.map((state) => state.playing),
-        builder: (context, snapshot) {
-          final playing = snapshot.data ?? false;
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (playing) ...[
-                prevButton(),
-                pauseButton(),
-                stopButton(),
-                nextButton(),
-              ] else ...[
-                audioPlayerButton(),
+    return Column(
+      children: [
+        const SizedBox(height: 10.0),
+        StreamBuilder<MediaState>(
+          stream: _mediaStateStream,
+          builder: (context, snapshot) {
+            final mediaState = snapshot.data;
+            return Column(
+              children: [
+                Text(mediaState.mediaItem.title),
+                SeekBar(
+                  duration: mediaState?.mediaItem?.duration ?? Duration.zero,
+                  position: mediaState?.position ?? Duration.zero,
+                  onChangeEnd: (newPosition) {
+                    audioHandler.seek(newPosition);
+                  },
+                ),
               ],
-            ],
-          );
-        },
-      ),
+            );
+          },
+        ),
+        StreamBuilder<bool>(
+          stream: audioHandler.playbackState.map((state) => state.playing),
+          builder: (context, snapshot) {
+            final playing = snapshot.data ?? false;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (playing) ...[
+                  prevButton(),
+                  pauseButton(),
+                  stopButton(),
+                  nextButton(),
+                ] else ...[
+                  audioPlayerButton(),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
+
+  Stream<MediaState> get _mediaStateStream =>
+      Rx.combineLatest2<MediaItem, Duration, MediaState>(
+          audioHandler.mediaItem,
+          AudioService.position,
+          (mediaItem, position) => MediaState(mediaItem, position));
 
   RaisedButton audioPlayerButton() => RaisedButton(
         child: Text("Play"),
@@ -61,4 +90,11 @@ class PlayerService extends StatelessWidget {
         Icons.stop,
         () => audioHandler.stop(),
       );
+}
+
+class MediaState {
+  final MediaItem mediaItem;
+  final Duration position;
+
+  MediaState(this.mediaItem, this.position);
 }

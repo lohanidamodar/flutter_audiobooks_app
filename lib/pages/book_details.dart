@@ -186,7 +186,7 @@ class DetailPageState extends State<DetailPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.grey.shade300,
+                color: Colors.grey.shade100,
                 child: PlayerService(),
               ),
             ),
