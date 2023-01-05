@@ -2,13 +2,13 @@ import 'dart:convert';
 
 const String _base = "https://archive.org/download";
 class AudioFile{
-  final String bookId;
-  final String title;
-  final String name;
-  final String url;
-  final double length;
-  final int track;
-  final int size;
+  final String? bookId;
+  final String? title;
+  final String? name;
+  final String? url;
+  final double? length;
+  final int? track;
+  final int? size;
 
 
   AudioFile.fromJson(Map json):
@@ -30,13 +30,17 @@ class AudioFile{
     url=json["url"];
 
   static List<AudioFile> fromJsonArray(List json) {
-    List<AudioFile> audiofiles = List<AudioFile>();
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
+    List<AudioFile> audiofiles = <AudioFile>[];
+    for (var audiofile in json) {
+      audiofiles.add(AudioFile.fromJson(audiofile));
+    }
     return audiofiles;
   }
   static List<AudioFile> fromDBArray(List json) {
-    List<AudioFile> audiofiles = List<AudioFile>();
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromDB(audiofile)));
+    List<AudioFile> audiofiles = <AudioFile>[];
+    for (var audiofile in json) {
+      audiofiles.add(AudioFile.fromDB(audiofile));
+    }
     return audiofiles;
   }
 
@@ -53,7 +57,7 @@ class AudioFile{
   }
 
   String toJson() {
-    return json.encode(this.toMap());
+    return json.encode(toMap());
   }
 
   static String toJsonArray(List<AudioFile> audiofiles){

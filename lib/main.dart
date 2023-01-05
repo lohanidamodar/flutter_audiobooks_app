@@ -1,21 +1,27 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'pages/home_page.dart';
 
-void main() {
+late AudioHandler audioHandler;
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(AudioServiceWidget(child: AudioBooksApp()));
+  audioHandler = await initAudioService();
+  runApp(const AudioBooksApp());
 }
 
 class AudioBooksApp extends StatefulWidget {
+  const AudioBooksApp({Key? key}) : super(key: key);
+
   @override
-  _AudioBooksAppState createState() => _AudioBooksAppState();
+  AudioBooksAppState createState() => AudioBooksAppState();
 }
 
-class _AudioBooksAppState extends State<AudioBooksApp>
+class AudioBooksAppState extends State<AudioBooksApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -51,23 +57,23 @@ class _AudioBooksAppState extends State<AudioBooksApp>
       create: (_) => AudioBooksNotifier(),
       child: MaterialApp(
         theme: ThemeData(
-            textTheme: TextTheme(
-              title: TextStyle(fontFamily: "Aleo", fontWeight: FontWeight.bold),
-              subtitle: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
-            ),
-            buttonColor: Theme.of(context).accentColor,
-            primarySwatch: Colors.pink,
-            accentColor: Colors.indigoAccent),
-        home: HomePage(),
+          textTheme: const TextTheme(
+            headline6:
+                TextStyle(fontFamily: "Aleo", fontWeight: FontWeight.bold),
+            subtitle1: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
+          ),
+          primarySwatch: Colors.pink,
+        ),
+        home: const HomePage(),
       ),
     );
   }
 
   void connect() async {
-    await AudioService.connect();
+    // await AudioService.connect();
   }
 
   void disconnect() {
-    AudioService.disconnect();
+    // AudioService.disconnect();
   }
 }
