@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class SeekBar extends StatefulWidget {
-  final Duration duration;
-  final Duration position;
+  final Duration? duration;
+  final Duration? position;
   final Duration bufferedPosition;
-  final ValueChanged<Duration> onChanged;
-  final ValueChanged<Duration> onChangeEnd;
+  final ValueChanged<Duration>? onChanged;
+  final ValueChanged<Duration>? onChangeEnd;
 
   SeekBar({
      this.duration,
@@ -22,9 +22,9 @@ class SeekBar extends StatefulWidget {
 }
 
 class _SeekBarState extends State<SeekBar> {
-  double _dragValue;
+  double? _dragValue;
   bool _dragging = false;
-   SliderThemeData _sliderThemeData;
+   late SliderThemeData _sliderThemeData;
 
   @override
   void didChangeDependencies() {
@@ -38,8 +38,8 @@ class _SeekBarState extends State<SeekBar> {
   @override
   Widget build(BuildContext context) {
     final value = min(
-      _dragValue ?? widget.position.inMilliseconds.toDouble(),
-      widget.duration.inMilliseconds.toDouble(),
+      _dragValue ?? widget.position!.inMilliseconds.toDouble(),
+      widget.duration!.inMilliseconds.toDouble(),
     );
     if (_dragValue != null && !_dragging) {
       _dragValue = null;
@@ -55,9 +55,9 @@ class _SeekBarState extends State<SeekBar> {
           child: ExcludeSemantics(
             child: Slider(
               min: 0.0,
-              max: widget.duration.inMilliseconds.toDouble(),
+              max: widget.duration!.inMilliseconds.toDouble(),
               value: min(widget.bufferedPosition.inMilliseconds.toDouble(),
-                  widget.duration.inMilliseconds.toDouble()),
+                  widget.duration!.inMilliseconds.toDouble()),
               onChanged: (value) {},
             ),
           ),
@@ -68,7 +68,7 @@ class _SeekBarState extends State<SeekBar> {
           ),
           child: Slider(
             min: 0.0,
-            max: widget.duration.inMilliseconds.toDouble(),
+            max: widget.duration!.inMilliseconds.toDouble(),
             value: value,
             onChanged: (value) {
               if (!_dragging) {
@@ -78,12 +78,12 @@ class _SeekBarState extends State<SeekBar> {
                 _dragValue = value;
               });
               if (widget.onChanged != null) {
-                widget.onChanged(Duration(milliseconds: value.round()));
+                widget.onChanged!(Duration(milliseconds: value.round()));
               }
             },
             onChangeEnd: (value) {
               if (widget.onChangeEnd != null) {
-                widget.onChangeEnd(Duration(milliseconds: value.round()));
+                widget.onChangeEnd!(Duration(milliseconds: value.round()));
               }
               _dragging = false;
             },
@@ -103,7 +103,7 @@ class _SeekBarState extends State<SeekBar> {
     );
   }
 
-  Duration get _remaining => widget.duration - widget.position;
+  Duration get _remaining => widget.duration! - widget.position!;
 }
 class HiddenThumbComponentShape extends SliderComponentShape {
   @override
@@ -113,15 +113,15 @@ class HiddenThumbComponentShape extends SliderComponentShape {
   void paint(
     PaintingContext context,
     Offset center, {
-    Animation<double> activationAnimation,
-    Animation<double> enableAnimation,
-    bool isDiscrete,
-    TextPainter labelPainter,
-    RenderBox parentBox,
-    SliderThemeData sliderTheme,
-    TextDirection textDirection,
-    double value,
-    double textScaleFactor,
-    Size sizeWithOverflow,
+    Animation<double>? activationAnimation,
+    Animation<double>? enableAnimation,
+    bool? isDiscrete,
+    TextPainter? labelPainter,
+    RenderBox? parentBox,
+    SliderThemeData? sliderTheme,
+    TextDirection? textDirection,
+    double? value,
+    double? textScaleFactor,
+    Size? sizeWithOverflow,
   }) {}
 }

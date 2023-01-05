@@ -18,9 +18,10 @@ class AudioBooksNotifier with ChangeNotifier {
   UnmodifiableListView<Book> get topBooks => UnmodifiableListView(_top);
 
   AudioBooksNotifier() {
-    if(_books.isEmpty)
+    if(_books.isEmpty) {
       getBooks();
       getTopBooks();
+    }
   }
 
   
@@ -32,7 +33,7 @@ class AudioBooksNotifier with ChangeNotifier {
       List<Book> res = await Repository().topBooks();
       _top = res;
     }catch(e) {
-      print(e.message);
+      print(e.toString());
     }
     _isLoading = false;
     notifyListeners();

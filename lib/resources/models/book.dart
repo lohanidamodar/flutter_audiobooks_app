@@ -3,19 +3,19 @@ final imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
 class Book {
   final String title;
   final String id;
-  final String description;
-  final String totalTime;
-  final String author;
-  final DateTime date;
-  final int downloads;
-  final List<dynamic> subject;
-  final int size;
-  final double rating;
-  final int reviews;
+  final String? description;
+  final String? totalTime;
+  final String? author;
+  final DateTime? date;
+  final int? downloads;
+  final List<dynamic>? subject;
+  final int? size;
+  final double? rating;
+  final int? reviews;
 
   Book.fromJson(Map jsonBook):
-    id=jsonBook["identifier"],
-    title=jsonBook["title"],
+    id=jsonBook["identifier"] ?? '',
+    title=jsonBook["title"] ?? '',
     totalTime=jsonBook["runtime"],
     author=jsonBook["creator"],
     date= jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
@@ -27,8 +27,8 @@ class Book {
     description=jsonBook["description"];
 
   Book.fromDB(Map jsonBook):
-    id=jsonBook["identifier"],
-    title=jsonBook["title"],
+    id=jsonBook["identifier"] ?? '',
+    title=jsonBook["title"] ?? '',
     totalTime=jsonBook["runtime"],
     author=jsonBook["creator"],
     date=DateTime.fromMillisecondsSinceEpoch(int.parse(jsonBook["date"])),
@@ -41,12 +41,12 @@ class Book {
 
 
   static List<Book> fromJsonArray(List jsonBook) {
-    List<Book> books = List<Book>();
+    List<Book> books = <Book>[];
     jsonBook.forEach((book)=> books.add(Book.fromJson(book)));
     return books;
   }
   static List<Book> fromDbArray(List jsonBook) {
-    List<Book> books = List<Book>();
+    List<Book> books = <Book>[];
     jsonBook.forEach((book)=>books.add(Book.fromDB(book)));
     return books;
   }
@@ -58,16 +58,16 @@ class Book {
       "description":description,
       "runtime":totalTime,
       "creator":author,
-      "date":date.millisecondsSinceEpoch.toString(),
+      "date":date!.millisecondsSinceEpoch.toString(),
       "downloads":downloads,
-      "subject":subject.join(";"),
+      "subject":subject!.join(";"),
       "item_size":size,
       "avg_rating":rating,
       "num_reviews":reviews,
     });
   }
 
-  String getIdentifier() {
+  String? getIdentifier() {
     return id;
   }
 

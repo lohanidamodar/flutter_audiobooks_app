@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 class BookGridItem extends StatelessWidget {
   final Book book;
-  final void Function() onTap;
+  final void Function()? onTap;
 
-  const BookGridItem({Key key, @required this.book, this.onTap}) : super(key: key);
+  const BookGridItem({Key? key, required this.book, this.onTap}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -28,7 +28,7 @@ class BookGridItem extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10.0),
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
                   Colors.transparent,
                   Colors.black
@@ -43,13 +43,13 @@ class BookGridItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Spacer(),
-                Text(book.title, style: TextStyle(
+                const Spacer(),
+                Text(book.title, style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold
                 ),),
-                Text(book.author ?? 'no author', style: TextStyle(
+                Text(book.author ?? 'no author', style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12
                 ),)

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/resources/repository.dart';
@@ -6,29 +8,29 @@ import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
-class DatabaseHelper implements Cache{
+class DatabaseHelper implements Cache {
   static final DatabaseHelper _instance = DatabaseHelper.internal();
 
   factory DatabaseHelper() => _instance;
 
-  static Database _db;
+  static Database? _db;
 
   static final String bookTable = "books";
   final String authorTable = "authors";
   static final String audioFilesTable = "audiofiles";
-  
-  static final String columnId = "identifier";
-  static final String columnTitle="title";
 
-  static final String bookDescriptionColumn="description";
-  static final String bookRuntimeColumn="runtime";
-  static final String bookCreatorColumn="creator";
-  static final String bookDateColumn="date";
-  static final String bookDownloadsColumn="downloads";
-  static final String bookSubjectColumn="subject";
-  static final String bookItemSizeColumn="item_size";
-  static final String bookAvgRatingColumn="avg_rating";
-  static final String bookNumReviewsColumn="num_reviews";
+  static final String columnId = "identifier";
+  static final String columnTitle = "title";
+
+  static final String bookDescriptionColumn = "description";
+  static final String bookRuntimeColumn = "runtime";
+  static final String bookCreatorColumn = "creator";
+  static final String bookDateColumn = "date";
+  static final String bookDownloadsColumn = "downloads";
+  static final String bookSubjectColumn = "subject";
+  static final String bookItemSizeColumn = "item_size";
+  static final String bookAvgRatingColumn = "avg_rating";
+  static final String bookNumReviewsColumn = "num_reviews";
 
   static final String afBookIdColumn = "book_id";
   static final String afUrlColumn = "url";
@@ -66,18 +68,16 @@ class DatabaseHelper implements Cache{
   """;
 
   Future<Database> get db async {
-    if(_db == null) {
-      _db = await _initDB();
-    }
-    return _db;
+    _db ??= await _initDB();
+    return _db!;
   }
 
   DatabaseHelper.internal();
 
   _initDB() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path,"maindb.db");
-    var db = await openDatabase(path, version: 1,onCreate: _onCreate);
+    String path = join(documentsDirectory.path, "maindb.db");
+    var db = await openDatabase(path, version: 1, onCreate: _onCreate);
     return db;
   }
 
@@ -87,12 +87,12 @@ class DatabaseHelper implements Cache{
   }
 
   // insert
-  Future<int> saveBook(Book book) async {
+  Future<int?> saveBook(Book book) async {
     try {
       var dbClient = await db;
       int result = await dbClient.insert(bookTable, book.toMap());
       return result;
-    }catch(e){
+    } catch (e) {
       print(e);
     }
     return null;
@@ -107,7 +107,8 @@ class DatabaseHelper implements Cache{
   @override
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
-    var res = await dbClient.rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
+    var res = await dbClient
+        .rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
     return Book.fromDbArray(res);
   }
 
@@ -118,19 +119,17 @@ class DatabaseHelper implements Cache{
 
   @override
   Future saveBooks(List<Book> books) async {
-    books.forEach((Book book)=>saveBook(book));
+    for (var book in books) {
+      saveBook(book);
+    }
   }
 
-  Future<Book> getBook(String id) async{
+  Future<Book?> getBook(String? id) async {
     var dbClient = await db;
-    final maps = await dbClient.query(
-      bookTable,
-      columns: null,
-      where:"$columnId = ?",
-      whereArgs: [id]
-    );
+    final maps = await dbClient.query(bookTable,
+        columns: null, where: "$columnId = ?", whereArgs: [id]);
 
-    if (maps.length > 0){
+    if (maps.isNotEmpty) {
       return Book.fromDB(maps.first);
     }
 
@@ -138,15 +137,17 @@ class DatabaseHelper implements Cache{
   }
 
   @override
-  Future<List<AudioFile>> fetchAudioFiles(String bookId) async {
+  Future<List<AudioFile>> fetchAudioFiles(String? bookId) async {
     var dbClient = await db;
-    var res = await dbClient.query(audioFilesTable,where: " $afBookIdColumn = ?", whereArgs: [bookId]);
+    var res = await dbClient.query(audioFilesTable,
+        where: " $afBookIdColumn = ?", whereArgs: [bookId]);
     return AudioFile.fromDBArray(res);
   }
 
   @override
   Future saveAudioFiles(List<AudioFile> audiofiles) async {
-    audiofiles.forEach((AudioFile audiofile)=>saveAudioFile(audiofile));
+    for (var audiofile in audiofiles) {
+      saveAudioFile(audiofile);
+    }
   }
-
 }

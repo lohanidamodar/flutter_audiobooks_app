@@ -8,17 +8,19 @@ import 'package:provider/provider.dart';
 
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
-  _HomePageState createState() {
-    return new _HomePageState();
+  HomePageState createState() {
+    return HomePageState();
   }
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   final _scrollController = ScrollController();
   final _scrollThreshold = 200.0;
 
-  _HomePageState() {
+  HomePageState() {
     _scrollController.addListener(_onScroll);
   }
 
@@ -28,19 +30,19 @@ class _HomePageState extends State<HomePage> {
       body: Consumer(
         builder: (BuildContext context, AudioBooksNotifier notifier, _){
           if (notifier.books.isEmpty) {
-            return Center(
+            return const Center(
               child: Text('no posts'),
             );
           }
           return CustomScrollView(
             controller: _scrollController,
             slivers: <Widget>[
-              SliverAppBar(
+              const SliverAppBar(
                 title: Text("Books"),
                 floating: true,
               ),
-              SliverPadding(
-                padding: const EdgeInsets.all(16.0),
+              const SliverPadding(
+                padding: EdgeInsets.all(16.0),
                 sliver: SliverToBoxAdapter(
                   child: Text("Most Downloaded"),
                 ),
@@ -48,7 +50,7 @@ class _HomePageState extends State<HomePage> {
               SliverPadding(
                 padding: const EdgeInsets.all(16.0),
                 sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 16.0,
                     mainAxisSpacing: 16.0
@@ -59,8 +61,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.all(16.0),
+              const SliverPadding(
+                padding: EdgeInsets.all(16.0),
                 sliver: SliverToBoxAdapter(
                   child: Text("Recent Books"),
                 ),
@@ -70,7 +72,7 @@ class _HomePageState extends State<HomePage> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => index >= notifier.books.length
-                      ? BottomLoader()
+                      ? const BottomLoader()
                       : _buildBookItem(context,index,notifier.books),
                     childCount: notifier.hasReachedMax
                       ? notifier.books.length
@@ -106,7 +108,7 @@ class _HomePageState extends State<HomePage> {
           ),
           onTap: () => _openDetail(context,book),
         ),
-        Divider(),
+        const Divider(),
       ],
     );
   }
@@ -119,11 +121,13 @@ class _HomePageState extends State<HomePage> {
 }
 
 class BottomLoader extends StatelessWidget {
+  const BottomLoader({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Container(
       alignment: Alignment.center,
-      child: Center(
+      child: const Center(
         child: SizedBox(
           width: 33,
           height: 33,

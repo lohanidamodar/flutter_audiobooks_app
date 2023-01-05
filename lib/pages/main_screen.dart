@@ -2,9 +2,11 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audiobooks/main.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
+// import 'package:rxdart/rxdart.dart';
 
 class MainScreen extends StatelessWidget {
+  const MainScreen({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,7 +18,7 @@ class MainScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Show media item title
-            StreamBuilder<MediaItem>(
+            StreamBuilder<MediaItem?>(
               stream: audioHandler.mediaItem,
               builder: (context, snapshot) {
                 final mediaItem = snapshot.data;
@@ -78,11 +80,11 @@ class MainScreen extends StatelessWidget {
 
   /// A stream reporting the combined state of the current media item and its
   /// current position.
-  Stream<MediaState> get _mediaStateStream =>
-      Rx.combineLatest2<MediaItem, Duration, MediaState>(
-          audioHandler.mediaItem,
-          AudioService.position,
-          (mediaItem, position) => MediaState(mediaItem, position));
+  // Stream<MediaState> get _mediaStateStream =>
+  //     Rx.combineLatest2<MediaItem?, Duration, MediaState>(
+  //         audioHandler.mediaItem,
+  //         AudioService.position,
+  //         (mediaItem, position) => MediaState(mediaItem, position));
 
   IconButton _button(IconData iconData, VoidCallback onPressed) => IconButton(
         icon: Icon(iconData),
@@ -92,7 +94,7 @@ class MainScreen extends StatelessWidget {
 }
 
 class MediaState {
-  final MediaItem mediaItem;
+  final MediaItem? mediaItem;
   final Duration position;
 
   MediaState(this.mediaItem, this.position);

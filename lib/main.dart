@@ -1,27 +1,27 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:audiobooks/pages/main_screen.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
-import 'package:audiobooks/resources/player_res.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'pages/home_page.dart';
 
-AudioHandler audioHandler;
+late AudioHandler audioHandler;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   audioHandler = await initAudioService();
-  runApp(AudioBooksApp());
+  runApp(const AudioBooksApp());
 }
 
 class AudioBooksApp extends StatefulWidget {
+  const AudioBooksApp({Key? key}) : super(key: key);
+
   @override
-  _AudioBooksAppState createState() => _AudioBooksAppState();
+  AudioBooksAppState createState() => AudioBooksAppState();
 }
 
-class _AudioBooksAppState extends State<AudioBooksApp>
+class AudioBooksAppState extends State<AudioBooksApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -57,14 +57,14 @@ class _AudioBooksAppState extends State<AudioBooksApp>
       create: (_) => AudioBooksNotifier(),
       child: MaterialApp(
         theme: ThemeData(
-          textTheme: TextTheme(
+          textTheme: const TextTheme(
             headline6:
                 TextStyle(fontFamily: "Aleo", fontWeight: FontWeight.bold),
             subtitle1: TextStyle(fontFamily: "Slabo", fontSize: 16.0),
           ),
           primarySwatch: Colors.pink,
         ),
-        home: HomePage(),
+        home: const HomePage(),
       ),
     );
   }

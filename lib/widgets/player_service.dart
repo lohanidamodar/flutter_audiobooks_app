@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
 class PlayerService extends StatelessWidget {
+  const PlayerService({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -13,13 +15,15 @@ class PlayerService extends StatelessWidget {
         StreamBuilder<MediaState>(
           stream: _mediaStateStream,
           builder: (context, snapshot) {
-            final mediaState = snapshot.data;
+            if (snapshot == null || !snapshot.hasData)
+              return const CircularProgressIndicator();
+            final mediaState = snapshot.data!;
             return Column(
               children: [
-                Text(mediaState.mediaItem.title),
+                Text(mediaState.mediaItem?.title ?? ''),
                 SeekBar(
-                  duration: mediaState?.mediaItem?.duration ?? Duration.zero,
-                  position: mediaState?.position ?? Duration.zero,
+                  duration: mediaState.mediaItem?.duration ?? Duration.zero,
+                  position: mediaState.position,
                   onChangeEnd: (newPosition) {
                     audioHandler.seek(newPosition);
                   },
@@ -52,12 +56,12 @@ class PlayerService extends StatelessWidget {
   }
 
   Stream<MediaState> get _mediaStateStream =>
-      Rx.combineLatest2<MediaItem, Duration, MediaState>(
+      Rx.combineLatest2<MediaItem?, Duration, MediaState>(
           audioHandler.mediaItem,
           AudioService.position,
           (mediaItem, position) => MediaState(mediaItem, position));
 
-  RaisedButton audioPlayerButton() => RaisedButton(
+  ElevatedButton audioPlayerButton() => ElevatedButton(
         child: Text("Play"),
         onPressed: () {
           // start();
@@ -68,7 +72,7 @@ class PlayerService extends StatelessWidget {
   IconButton baseButton(IconData icon, Function onPressed) => IconButton(
         color: Colors.pink,
         iconSize: 32.0,
-        onPressed: onPressed,
+        onPressed: onPressed as void Function()?,
         icon: Icon(icon),
       );
 
@@ -93,7 +97,7 @@ class PlayerService extends StatelessWidget {
 }
 
 class MediaState {
-  final MediaItem mediaItem;
+  final MediaItem? mediaItem;
   final Duration position;
 
   MediaState(this.mediaItem, this.position);

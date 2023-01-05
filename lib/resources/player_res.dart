@@ -45,14 +45,14 @@ MediaControl prevControl = MediaControl(
 class CustomAudioPlayer extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   AudioPlayer _player = new AudioPlayer();
-  String streamUri =
+  String? streamUri =
       'http://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3';
-  String bookId;
-  int index = 0;
+  String? bookId;
+  int? index = 0;
   // Completer _completer = Completer();
   // Duration _position;
-  List<AudioFile> audiofiles;
-  Book book;
+  late List<AudioFile> audiofiles;
+  Book? book;
 
   // static final _item = MediaItem(
   //   id: 'https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3',
@@ -90,7 +90,7 @@ class CustomAudioPlayer extends BaseAudioHandler
         ProcessingState.buffering: AudioProcessingState.buffering,
         ProcessingState.ready: AudioProcessingState.ready,
         ProcessingState.completed: AudioProcessingState.completed,
-      }[_player.processingState],
+      }[_player.processingState]!,
       playing: _player.playing,
       updatePosition: _player.position,
       bufferedPosition: _player.bufferedPosition,
@@ -108,12 +108,12 @@ class CustomAudioPlayer extends BaseAudioHandler
     book = await DatabaseHelper().getBook(bookId);
     print("Playing track $index");
     final item = MediaItem(
-        id: bookId,
-        album: book != null ? book.title : "Unknown",
-        title: audiofiles[index].title,
-        artist: book != null ? book.author : "Unknown");
+        id: bookId!,
+        album: book != null ? book!.title : "Unknown",
+        title: audiofiles[index!].title!,
+        artist: book != null ? book!.author : "Unknown");
     mediaItem.add(item);
-    await _player.setAudioSource(AudioSource.uri(Uri.parse(audiofiles[index].url)));
+    await _player.setAudioSource(AudioSource.uri(Uri.parse(audiofiles[index!].url!)));
     // var playerStateSubscription = _audioPlayer.onPlayerStateChanged
     //     .where((state) => state == AudioPlayerState.COMPLETED)
     //     .listen((state) {

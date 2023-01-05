@@ -6,21 +6,22 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
    <application
-        android:name=".MyApplication"
+        android:name="${applicationName}"
         android:label="flutter_audiobooks_app"
         android:icon="@mipmap/ic_launcher">
-        <service android:name="com.ryanheise.audioservice.AudioService">
+        <service android:exported="true" android:name="com.ryanheise.audioservice.AudioService">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 
-        <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" >
+        <receiver android:exported="true" android:name="com.ryanheise.audioservice.MediaButtonReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver> 
         <activity
+            android:exported="true"
             android:name="com.ryanheise.audioservice.AudioServiceActivity"
             android:launchMode="singleTop"
             android:theme="@style/LaunchTheme"
