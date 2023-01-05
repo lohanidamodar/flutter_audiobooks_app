@@ -15,8 +15,9 @@ class PlayerService extends StatelessWidget {
         StreamBuilder<MediaState>(
           stream: _mediaStateStream,
           builder: (context, snapshot) {
-            if (snapshot == null || !snapshot.hasData)
+            if (!snapshot.hasData) {
               return const CircularProgressIndicator();
+            }
             final mediaState = snapshot.data!;
             return Column(
               children: [
@@ -62,7 +63,7 @@ class PlayerService extends StatelessWidget {
           (mediaItem, position) => MediaState(mediaItem, position));
 
   ElevatedButton audioPlayerButton() => ElevatedButton(
-        child: Text("Play"),
+        child: const Text("Play"),
         onPressed: () {
           // start();
           audioHandler.play();

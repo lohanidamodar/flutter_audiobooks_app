@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/resources/repository.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:io';
@@ -15,29 +16,29 @@ class DatabaseHelper implements Cache {
 
   static Database? _db;
 
-  static final String bookTable = "books";
+  static const String bookTable = "books";
   final String authorTable = "authors";
-  static final String audioFilesTable = "audiofiles";
+  static const String audioFilesTable = "audiofiles";
 
-  static final String columnId = "identifier";
-  static final String columnTitle = "title";
+  static const String columnId = "identifier";
+  static const String columnTitle = "title";
 
-  static final String bookDescriptionColumn = "description";
-  static final String bookRuntimeColumn = "runtime";
-  static final String bookCreatorColumn = "creator";
-  static final String bookDateColumn = "date";
-  static final String bookDownloadsColumn = "downloads";
-  static final String bookSubjectColumn = "subject";
-  static final String bookItemSizeColumn = "item_size";
-  static final String bookAvgRatingColumn = "avg_rating";
-  static final String bookNumReviewsColumn = "num_reviews";
+  static const String bookDescriptionColumn = "description";
+  static const String bookRuntimeColumn = "runtime";
+  static const String bookCreatorColumn = "creator";
+  static const String bookDateColumn = "date";
+  static const String bookDownloadsColumn = "downloads";
+  static const String bookSubjectColumn = "subject";
+  static const String bookItemSizeColumn = "item_size";
+  static const String bookAvgRatingColumn = "avg_rating";
+  static const String bookNumReviewsColumn = "num_reviews";
 
-  static final String afBookIdColumn = "book_id";
-  static final String afUrlColumn = "url";
-  static final String afNameColumn = "name";
-  static final String afLengthColumn = "length";
-  static final String afTrackColumn = "track";
-  static final String afSizeColumn = "size";
+  static const String afBookIdColumn = "book_id";
+  static const String afUrlColumn = "url";
+  static const String afNameColumn = "name";
+  static const String afLengthColumn = "length";
+  static const String afTrackColumn = "track";
+  static const String afSizeColumn = "size";
 
   final String createAudiofilesTable = """
     CREATE TABLE $audioFilesTable (
@@ -93,7 +94,7 @@ class DatabaseHelper implements Cache {
       int result = await dbClient.insert(bookTable, book.toMap());
       return result;
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
     }
     return null;
   }

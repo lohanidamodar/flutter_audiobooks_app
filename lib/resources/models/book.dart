@@ -1,4 +1,4 @@
-final imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
+const imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
 
 class Book {
   final String title;
@@ -42,12 +42,16 @@ class Book {
 
   static List<Book> fromJsonArray(List jsonBook) {
     List<Book> books = <Book>[];
-    jsonBook.forEach((book)=> books.add(Book.fromJson(book)));
+    for (var book in jsonBook) {
+      books.add(Book.fromJson(book));
+    }
     return books;
   }
   static List<Book> fromDbArray(List jsonBook) {
     List<Book> books = <Book>[];
-    jsonBook.forEach((book)=>books.add(Book.fromDB(book)));
+    for (var book in jsonBook) {
+      books.add(Book.fromDB(book));
+    }
     return books;
   }
 

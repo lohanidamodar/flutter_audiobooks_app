@@ -31,12 +31,16 @@ class AudioFile{
 
   static List<AudioFile> fromJsonArray(List json) {
     List<AudioFile> audiofiles = <AudioFile>[];
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromJson(audiofile)));
+    for (var audiofile in json) {
+      audiofiles.add(AudioFile.fromJson(audiofile));
+    }
     return audiofiles;
   }
   static List<AudioFile> fromDBArray(List json) {
     List<AudioFile> audiofiles = <AudioFile>[];
-    json.forEach((audiofile)=>audiofiles.add(AudioFile.fromDB(audiofile)));
+    for (var audiofile in json) {
+      audiofiles.add(AudioFile.fromDB(audiofile));
+    }
     return audiofiles;
   }
 
@@ -53,7 +57,7 @@ class AudioFile{
   }
 
   String toJson() {
-    return json.encode(this.toMap());
+    return json.encode(toMap());
   }
 
   static String toJsonArray(List<AudioFile> audiofiles){

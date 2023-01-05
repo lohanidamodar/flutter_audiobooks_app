@@ -2,32 +2,33 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:audiobooks/resources/books_db_provider.dart';
 import 'package:audiobooks/resources/models/book.dart';
+import 'package:flutter/widgets.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/audiofile.dart';
 
-MediaControl playControl = MediaControl(
+MediaControl playControl = const MediaControl(
   androidIcon: 'drawable/ic_action_play_arrow',
   label: 'Play',
   action: MediaAction.play,
 );
-MediaControl pauseControl = MediaControl(
+MediaControl pauseControl = const MediaControl(
   androidIcon: 'drawable/ic_action_pause',
   label: 'Pause',
   action: MediaAction.pause,
 );
-MediaControl stopControl = MediaControl(
+MediaControl stopControl = const MediaControl(
   androidIcon: 'drawable/ic_action_stop',
   label: 'Stop',
   action: MediaAction.stop,
 );
-MediaControl nextControl = MediaControl(
+MediaControl nextControl = const MediaControl(
   androidIcon: 'drawable/ic_skip_next',
   label: 'Next',
   action: MediaAction.skipToNext,
 );
-MediaControl prevControl = MediaControl(
+MediaControl prevControl = const MediaControl(
   androidIcon: 'drawable/ic_skip_previous',
   label: 'Previous',
   action: MediaAction.skipToPrevious,
@@ -44,7 +45,7 @@ MediaControl prevControl = MediaControl(
 
 class CustomAudioPlayer extends BaseAudioHandler
     with QueueHandler, SeekHandler {
-  AudioPlayer _player = new AudioPlayer();
+  final AudioPlayer _player = AudioPlayer();
   String? streamUri =
       'http://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3';
   String? bookId;
@@ -106,7 +107,7 @@ class CustomAudioPlayer extends BaseAudioHandler
     index = (await SharedPreferences.getInstance()).getInt("track");
     audiofiles = await DatabaseHelper().fetchAudioFiles(bookId);
     book = await DatabaseHelper().getBook(bookId);
-    print("Playing track $index");
+    debugPrint("Playing track $index");
     final item = MediaItem(
         id: bookId!,
         album: book != null ? book!.title : "Unknown",

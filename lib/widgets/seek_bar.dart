@@ -9,19 +9,19 @@ class SeekBar extends StatefulWidget {
   final ValueChanged<Duration>? onChanged;
   final ValueChanged<Duration>? onChangeEnd;
 
-  SeekBar({
+  const SeekBar({Key? key, 
      this.duration,
      this.position,
     this.bufferedPosition = Duration.zero,
     this.onChanged,
     this.onChangeEnd,
-  });
+  }) : super(key: key);
 
   @override
-  _SeekBarState createState() => _SeekBarState();
+  SeekBarState createState() => SeekBarState();
 }
 
-class _SeekBarState extends State<SeekBar> {
+class SeekBarState extends State<SeekBar> {
   double? _dragValue;
   bool _dragging = false;
    late SliderThemeData _sliderThemeData;

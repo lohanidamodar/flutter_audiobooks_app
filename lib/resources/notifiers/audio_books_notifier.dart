@@ -5,7 +5,7 @@ import 'package:audiobooks/resources/repository.dart';
 import 'package:flutter/foundation.dart';
 
 class AudioBooksNotifier with ChangeNotifier {
-  List<Book> _books = [];
+  final List<Book> _books = [];
   List<Book> _top = [];
   bool _isLoading = false;
   bool _hasReachedMax = false;
@@ -33,7 +33,7 @@ class AudioBooksNotifier with ChangeNotifier {
       List<Book> res = await Repository().topBooks();
       _top = res;
     }catch(e) {
-      print(e.toString());
+      debugPrint(e.toString());
     }
     _isLoading = false;
     notifyListeners();
@@ -43,12 +43,13 @@ class AudioBooksNotifier with ChangeNotifier {
     _isLoading = true;
     try {
       List<Book> res = await Repository().fetchBooks(_books.length, 20);
-      if(res.isEmpty)
+      if(res.isEmpty) {
         _hasReachedMax = true;
-      else
+      } else {
         _books.addAll(res);
+      }
     }catch(e) {
-      print(e);
+      debugPrint(e.toString());
     }
     _isLoading = false;
     notifyListeners();

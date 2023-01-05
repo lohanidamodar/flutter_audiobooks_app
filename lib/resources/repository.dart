@@ -16,7 +16,7 @@ class Repository {
   Future<List<Book>> fetchBooks(int offset, int limit) async {
     List<Book> books;
     books = await caches[0].getBooks(offset, limit);
-    if(books.length <= 0){
+    if(books.isEmpty){
       books = await sources[0].fetchBooks(offset,limit);
       caches[0].saveBooks(books);
     }
@@ -31,7 +31,7 @@ class Repository {
   Future<List<AudioFile>> fetchAudioFiles(String? bookId) async {
     List<AudioFile> audiofiles;
     audiofiles = await caches[0].fetchAudioFiles(bookId);
-    if(audiofiles.length <=0 ) {
+    if(audiofiles.isEmpty ) {
       audiofiles = await sources[0].fetchAudioFiles(bookId);
       caches[0].saveAudioFiles(audiofiles);
     }
