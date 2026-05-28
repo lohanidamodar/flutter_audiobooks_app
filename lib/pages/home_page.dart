@@ -1,21 +1,20 @@
 import 'package:audiobooks/pages/book_details.dart';
-import 'package:audiobooks/resources/audio_helper.dart';
+import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
-import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/widgets/book_grid_item.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   final _scrollController = ScrollController();
   static const _scrollThreshold = 240.0;
 
@@ -36,7 +35,7 @@ class _HomePageState extends State<HomePage> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
     if (maxScroll - currentScroll <= _scrollThreshold) {
-      context.read<AudioBooksNotifier>().loadMoreBooks();
+      ref.read(recentBooksProvider.notifier).loadMore();
     }
   }
 
@@ -46,85 +45,94 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _refresh() async {
+    ref.invalidate(topBooksProvider);
+    ref.invalidate(recentBooksProvider);
+    await ref.read(recentBooksProvider.future);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final recent = ref.watch(recentBooksProvider);
+    final top = ref.watch(topBooksProvider);
+
+    final recentBooks = recent.value?.books ?? const <Book>[];
+    final topBooks = top.value ?? const <Book>[];
+    final hasAnyData = recentBooks.isNotEmpty || topBooks.isNotEmpty;
+
     return Scaffold(
       body: Stack(
         children: [
-          Consumer<AudioBooksNotifier>(
-            builder: (context, notifier, _) {
-              final showFullScreen = notifier.books.isEmpty &&
-                  notifier.topBooks.isEmpty &&
-                  notifier.status != LoadStatus.ready;
-              if (showFullScreen) {
-                return CustomScrollView(
-                  slivers: [
-                    _appBar(),
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _FullScreenState(notifier: notifier),
-                    ),
-                  ],
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: notifier.refresh,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    _appBar(),
-                    if (notifier.topBooks.isNotEmpty) ...[
-                      _SectionTitle(title: 'Most downloaded'),
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.78,
+          if (!hasAnyData)
+            CustomScrollView(
+              slivers: [
+                _appBar(),
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _FullScreenState(
+                    isLoading: recent.isLoading || top.isLoading,
+                    hasError: recent.hasError && top.hasError,
+                    onRetry: _refresh,
+                  ),
+                ),
+              ],
+            )
+          else
+            RefreshIndicator(
+              onRefresh: _refresh,
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  _appBar(),
+                  if (topBooks.isNotEmpty) ...[
+                    const _SectionTitle(title: 'Most downloaded'),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.78,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => BookGridItem(
+                            book: topBooks[index],
+                            onTap: () => _openDetail(topBooks[index]),
                           ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => BookGridItem(
-                              book: notifier.topBooks[index],
-                              onTap: () =>
-                                  _openDetail(notifier.topBooks[index]),
-                            ),
-                            childCount: notifier.topBooks.length,
-                          ),
+                          childCount: topBooks.length,
                         ),
                       ),
-                    ],
-                    _SectionTitle(title: 'Recent books'),
-                    SliverList.builder(
-                      itemCount: notifier.books.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index >= notifier.books.length) {
-                          return _ListFooter(notifier: notifier);
-                        }
-                        return _BookListTile(
-                          book: notifier.books[index],
-                          onTap: () => _openDetail(notifier.books[index]),
-                        );
-                      },
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 88)),
                   ],
-                ),
-              );
-            },
-          ),
+                  const _SectionTitle(title: 'Recent books'),
+                  SliverList.builder(
+                    itemCount: recentBooks.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index >= recentBooks.length) {
+                        return _ListFooter(
+                          recent: recent.value,
+                          onRetry: () => ref
+                              .read(recentBooksProvider.notifier)
+                              .loadMore(),
+                        );
+                      }
+                      return _BookListTile(
+                        book: recentBooks[index],
+                        onTap: () => _openDetail(recentBooks[index]),
+                      );
+                    },
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 88)),
+                ],
+              ),
+            ),
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: MiniPlayer(
-              onTap: () {
-                final book = AudiobookPlayer.instance.currentBook;
-                if (book != null) _openDetail(book);
-              },
-            ),
+            child: MiniPlayer(onTap: _openDetail),
           ),
         ],
       ),
@@ -165,14 +173,9 @@ class _BookListTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundImage: CachedNetworkImageProvider(book.image),
       ),
-      title: Text(
-        book.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      title: Text(book.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: book.author != null
-          ? Text(book.author!,
-              maxLines: 1, overflow: TextOverflow.ellipsis)
+          ? Text(book.author!, maxLines: 1, overflow: TextOverflow.ellipsis)
           : null,
       trailing: const Icon(Icons.chevron_right),
     );
@@ -180,28 +183,27 @@ class _BookListTile extends StatelessWidget {
 }
 
 class _ListFooter extends StatelessWidget {
-  final AudioBooksNotifier notifier;
-  const _ListFooter({required this.notifier});
+  final RecentBooks? recent;
+  final VoidCallback onRetry;
+  const _ListFooter({required this.recent, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    if (notifier.hasReachedMax) {
+    if (recent?.hasReachedMax ?? false) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
-          child: Text(
-            'No more books',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text('No more books',
+              style: Theme.of(context).textTheme.bodySmall),
         ),
       );
     }
-    if (notifier.status == LoadStatus.error) {
+    if (recent?.loadMoreError != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
           child: TextButton.icon(
-            onPressed: notifier.loadMoreBooks,
+            onPressed: onRetry,
             icon: const Icon(Icons.refresh),
             label: const Text('Failed to load — retry'),
           ),
@@ -222,39 +224,38 @@ class _ListFooter extends StatelessWidget {
 }
 
 class _FullScreenState extends StatelessWidget {
-  final AudioBooksNotifier notifier;
-  const _FullScreenState({required this.notifier});
+  final bool isLoading;
+  final bool hasError;
+  final Future<void> Function() onRetry;
+  const _FullScreenState({
+    required this.isLoading,
+    required this.hasError,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (notifier.status == LoadStatus.loading ||
-        notifier.status == LoadStatus.initial) {
+    if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (notifier.status == LoadStatus.error) {
-      final theme = Theme.of(context);
+    final theme = Theme.of(context);
+    if (hasError) {
       return Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.cloud_off,
-                size: 64, color: theme.colorScheme.outline),
+            Icon(Icons.cloud_off, size: 64, color: theme.colorScheme.outline),
             const SizedBox(height: 16),
-            Text(
-              'Could not load books',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text('Could not load books',
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(
-              'Check your internet connection and try again.',
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
+            Text('Check your internet connection and try again.',
+                style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: notifier.refresh,
+              onPressed: onRetry,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
@@ -269,13 +270,10 @@ class _FullScreenState extends StatelessWidget {
         children: [
           const Icon(Icons.menu_book_outlined, size: 64),
           const SizedBox(height: 16),
-          Text(
-            'No books yet',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('No books yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: notifier.refresh,
+            onPressed: onRetry,
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh'),
           ),

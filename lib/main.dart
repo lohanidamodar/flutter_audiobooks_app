@@ -1,9 +1,8 @@
 import 'package:audiobooks/resources/audio_helper.dart';
-import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'pages/home_page.dart';
 
@@ -16,7 +15,7 @@ Future<void> main() async {
     error: const TaskNotification('Download failed', '{filename}'),
     progressBar: true,
   );
-  runApp(const AudioBooksApp());
+  runApp(const ProviderScope(child: AudioBooksApp()));
 }
 
 class AudioBooksApp extends StatelessWidget {
@@ -24,15 +23,12 @@ class AudioBooksApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AudioBooksNotifier(),
-      child: MaterialApp(
-        title: 'Audiobooks',
-        theme: AudiobookTheme.light(),
-        darkTheme: AudiobookTheme.dark(),
-        themeMode: ThemeMode.system,
-        home: const HomePage(),
-      ),
+    return MaterialApp(
+      title: 'Audiobooks',
+      theme: AudiobookTheme.light(),
+      darkTheme: AudiobookTheme.dark(),
+      themeMode: ThemeMode.system,
+      home: const HomePage(),
     );
   }
 }

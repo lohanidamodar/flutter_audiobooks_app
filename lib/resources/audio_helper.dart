@@ -7,12 +7,13 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 class AudiobookPlayer {
-  AudiobookPlayer._() {
+  AudiobookPlayer({PlaybackBookmarks? bookmarks})
+      : _bookmarks = bookmarks ?? PlaybackBookmarks() {
     _wireBookmarkPersistence();
   }
-  static final AudiobookPlayer instance = AudiobookPlayer._();
 
   final AudioPlayer player = AudioPlayer();
+  final PlaybackBookmarks _bookmarks;
 
   Book? _currentBook;
   List<AudioFile> _currentChapters = const [];
@@ -31,7 +32,7 @@ class AudiobookPlayer {
       if (now.difference(_lastSavedAt).inSeconds < 5) return;
       _lastSavedAt = now;
       final idx = player.currentIndex ?? 0;
-      PlaybackBookmarks.instance.save(
+      _bookmarks.save(
         book.id,
         Bookmark(chapterIndex: idx, position: pos),
       );
@@ -48,7 +49,7 @@ class AudiobookPlayer {
     _currentChapters = List.of(chapters);
 
     final saved = (startIndex == null && startPosition == null)
-        ? await PlaybackBookmarks.instance.load(book.id)
+        ? await _bookmarks.load(book.id)
         : null;
 
     final effectiveIndex = startIndex ?? saved?.chapterIndex ?? 0;

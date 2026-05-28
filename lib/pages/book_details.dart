@@ -1,65 +1,44 @@
-import 'package:audiobooks/resources/audio_helper.dart';
+import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
-import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/player_service.dart';
 import 'package:audiobooks/widgets/title.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DetailPage extends StatefulWidget {
+class DetailPage extends ConsumerStatefulWidget {
   final Book book;
   const DetailPage(this.book, {super.key});
 
   @override
-  State<DetailPage> createState() => _DetailPageState();
+  ConsumerState<DetailPage> createState() => _DetailPageState();
 }
 
-class _DetailPageState extends State<DetailPage> {
-  late Future<_DetailData> _detailFuture;
+class _DetailPageState extends ConsumerState<DetailPage> {
   final Set<String> _downloading = {};
-
-  AudioPlayer get _player => AudiobookPlayer.instance.player;
-
-  @override
-  void initState() {
-    super.initState();
-    _detailFuture = _loadDetails();
-  }
-
-  Future<_DetailData> _loadDetails() async {
-    final cached = AudiobookPlayer.instance.currentBook?.id == widget.book.id
-        ? AudiobookPlayer.instance.currentChapters
-        : const <AudioFile>[];
-    final chapters = cached.isNotEmpty
-        ? cached
-        : await Repository().fetchAudioFiles(widget.book.id);
-    final bookmark = await PlaybackBookmarks.instance.load(widget.book.id);
-    return _DetailData(chapters: chapters, bookmark: bookmark);
-  }
 
   Future<void> _playChapter(List<AudioFile> chapters, int index,
       {Duration position = Duration.zero}) async {
-    final loadedBook = AudiobookPlayer.instance.currentBook;
-    if (loadedBook?.id != widget.book.id) {
-      await AudiobookPlayer.instance.loadBook(
+    final controller = ref.read(audiobookPlayerProvider);
+    if (controller.currentBook?.id != widget.book.id) {
+      await controller.loadBook(
         book: widget.book,
         chapters: chapters,
         startIndex: index,
         startPosition: position,
       );
     } else {
-      await _player.seek(position, index: index);
+      await controller.player.seek(position, index: index);
     }
-    await _player.play();
+    await controller.player.play();
   }
 
   Future<void> _clearBookmark() async {
-    await PlaybackBookmarks.instance.clear(widget.book.id);
-    setState(() => _detailFuture = _loadDetails());
+    await ref.read(bookmarksProvider).clear(widget.book.id);
+    ref.invalidate(bookmarkProvider(widget.book.id));
   }
 
   Future<void> _downloadChapter(AudioFile chapter) async {
@@ -114,93 +93,75 @@ class _DetailPageState extends State<DetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final chaptersAsync = ref.watch(chaptersProvider(widget.book));
+    final bookmark = ref.watch(bookmarkProvider(widget.book.id)).value;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.book.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(widget.book.title,
+            maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
-      body: FutureBuilder<_DetailData>(
-        future: _detailFuture,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _ErrorState(
-              onRetry: () =>
-                  setState(() => _detailFuture = _loadDetails()),
-            );
-          }
-          final data = snapshot.data!;
-          return Stack(
-            children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 280),
-                children: [
-                  _Header(book: widget.book),
-                  const SizedBox(height: 16),
-                  if (data.bookmark != null)
-                    _ResumeCard(
-                      bookmark: data.bookmark!,
-                      chapters: data.chapters,
-                      onResume: () => _playChapter(
-                        data.chapters,
-                        data.bookmark!.chapterIndex,
-                        position: data.bookmark!.position,
-                      ),
-                      onClear: _clearBookmark,
+      body: chaptersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _ErrorState(
+          onRetry: () => ref.invalidate(chaptersProvider(widget.book)),
+        ),
+        data: (chapters) => Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 280),
+              children: [
+                _Header(book: widget.book),
+                const SizedBox(height: 16),
+                if (bookmark != null)
+                  _ResumeCard(
+                    bookmark: bookmark,
+                    chapters: chapters,
+                    onResume: () => _playChapter(
+                      chapters,
+                      bookmark.chapterIndex,
+                      position: bookmark.position,
                     ),
-                  if (widget.book.description != null &&
-                      widget.book.description!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text('About', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.book.description!,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Text('Chapters', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  for (var i = 0; i < data.chapters.length; i++)
-                    _ChapterTile(
-                      index: i,
-                      chapter: data.chapters[i],
-                      isBookmarkChapter:
-                          data.bookmark?.chapterIndex == i,
-                      isDownloading: _downloading.contains(
-                          '${widget.book.id}-${data.chapters[i].name}'),
-                      onPlay: () => _playChapter(data.chapters, i),
-                      onDownload: () => _downloadChapter(data.chapters[i]),
-                    ),
+                    onClear: _clearBookmark,
+                  ),
+                if (widget.book.description != null &&
+                    widget.book.description!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('About', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(widget.book.description!,
+                      style: theme.textTheme.bodyMedium),
                 ],
+                const SizedBox(height: 16),
+                Text('Chapters', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 4),
+                for (var i = 0; i < chapters.length; i++)
+                  _ChapterTile(
+                    index: i,
+                    chapter: chapters[i],
+                    isBookmarkChapter: bookmark?.chapterIndex == i,
+                    isDownloading: _downloading
+                        .contains('${widget.book.id}-${chapters[i].name}'),
+                    onPlay: () => _playChapter(chapters, i),
+                    onDownload: () => _downloadChapter(chapters[i]),
+                  ),
+              ],
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Material(
+                elevation: 4,
+                color: theme.colorScheme.surfaceContainerHighest,
+                child: const PlayerService(),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Material(
-                  elevation: 4,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: const PlayerService(),
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-class _DetailData {
-  final List<AudioFile> chapters;
-  final Bookmark? bookmark;
-  const _DetailData({required this.chapters, this.bookmark});
 }
 
 class _Header extends StatelessWidget {
@@ -238,16 +199,12 @@ class _Header extends StatelessWidget {
               children: [
                 BookTitle(book.title),
                 const SizedBox(height: 4),
-                Text(
-                  book.author ?? 'Unknown author',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text(book.author ?? 'Unknown author',
+                    style: theme.textTheme.titleMedium),
                 const SizedBox(height: 6),
                 if (book.totalTime != null)
-                  Text(
-                    'Total time: ${book.totalTime}',
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  Text('Total time: ${book.totalTime}',
+                      style: theme.textTheme.bodySmall),
               ],
             ),
           ),
@@ -292,8 +249,7 @@ class _ResumeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Resume listening',
-                      style: theme.textTheme.titleSmall),
+                  Text('Resume listening', style: theme.textTheme.titleSmall),
                   Text(
                     '$chapterTitle  ·  ${formatDuration(bookmark.position)}',
                     style: theme.textTheme.bodySmall,
@@ -303,10 +259,7 @@ class _ResumeCard extends StatelessWidget {
                 ],
               ),
             ),
-            FilledButton(
-              onPressed: onResume,
-              child: const Text('Resume'),
-            ),
+            FilledButton(onPressed: onResume, child: const Text('Resume')),
             IconButton(
               tooltip: 'Clear bookmark',
               icon: const Icon(Icons.close),
@@ -317,7 +270,6 @@ class _ResumeCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _ChapterTile extends StatelessWidget {
@@ -343,9 +295,8 @@ class _ChapterTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: IconButton(
-        icon: Icon(isBookmarkChapter
-            ? Icons.bookmark
-            : Icons.play_circle_filled),
+        icon: Icon(
+            isBookmarkChapter ? Icons.bookmark : Icons.play_circle_filled),
         color: isBookmarkChapter ? theme.colorScheme.primary : null,
         iconSize: 32,
         onPressed: onPlay,

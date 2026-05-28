@@ -7,9 +7,6 @@ class Bookmark {
 }
 
 class PlaybackBookmarks {
-  PlaybackBookmarks._();
-  static final PlaybackBookmarks instance = PlaybackBookmarks._();
-
   static const _prefix = 'bookmark::';
 
   Future<Bookmark?> load(String bookId) async {
