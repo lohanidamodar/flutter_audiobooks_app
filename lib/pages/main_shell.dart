@@ -1,7 +1,6 @@
 import 'package:audiobooks/pages/home_page.dart';
 import 'package:audiobooks/pages/library_page.dart';
 import 'package:audiobooks/pages/now_playing.dart';
-import 'package:audiobooks/pages/search_page.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +15,7 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _index = 0;
 
-  static const _pages = [HomePage(), LibraryPage(), SearchPage()];
+  static const _pages = [HomePage(), LibraryPage()];
 
   void _openNowPlaying() {
     Navigator.of(context).push(NowPlayingPage.route());
@@ -43,11 +42,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                 icon: Icon(Icons.library_books_outlined),
                 selectedIcon: Icon(Icons.library_books),
                 label: 'Library',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.search),
-                selectedIcon: Icon(Icons.search),
-                label: 'Search',
               ),
             ],
           ),

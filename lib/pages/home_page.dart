@@ -122,6 +122,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: const Text('Audiobooks'),
         floating: true,
         actions: [
+          _SearchAnchorButton(onOpen: _openDetail),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
@@ -155,6 +156,79 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SearchAnchorButton extends ConsumerWidget {
+  final void Function(Book book) onOpen;
+  const _SearchAnchorButton({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SearchAnchor(
+      isFullScreen: true,
+      viewHintText: 'Search audiobooks…',
+      builder: (context, controller) => IconButton(
+        icon: const Icon(Icons.search),
+        tooltip: 'Search',
+        onPressed: controller.openView,
+      ),
+      viewOnSubmitted: (value) =>
+          ref.read(searchProvider.notifier).search(value),
+      suggestionsBuilder: (context, controller) => [
+        _SearchResults(
+          onOpen: (book) {
+            controller.closeView(null);
+            onOpen(book);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchResults extends ConsumerWidget {
+  final void Function(Book book) onOpen;
+  const _SearchResults({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final results = ref.watch(searchProvider);
+    final query = ref.read(searchProvider.notifier).query;
+    final theme = Theme.of(context);
+
+    Widget message(String text) => Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: Text(text,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+        );
+
+    return results.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => message('Search failed. Try again.'),
+      data: (books) {
+        if (query.isEmpty) {
+          return message('Search the LibriVox catalogue by title.');
+        }
+        if (books.isEmpty) return message('No results for "$query".');
+        return ListView.builder(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: books.length,
+          itemBuilder: (context, i) => BookListRow(
+            book: books[i],
+            onTap: () => onOpen(books[i]),
+          ),
+        );
+      },
     );
   }
 }
