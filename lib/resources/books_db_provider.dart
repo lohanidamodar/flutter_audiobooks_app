@@ -91,7 +91,11 @@ class DatabaseHelper implements Cache {
   Future<int?> saveBook(Book book) async {
     try {
       var dbClient = await db;
-      int result = await dbClient.insert(bookTable, book.toMap());
+      int result = await dbClient.insert(
+        bookTable,
+        book.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
       return result;
     } catch (e) {
       debugPrint(e.toString());

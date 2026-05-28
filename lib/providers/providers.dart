@@ -114,6 +114,14 @@ final bookmarkProvider =
   return ref.read(bookmarksProvider).load(bookId);
 });
 
+/// Chapter filenames that are fully downloaded for a book. Auto-disposed and
+/// invalidated after downloads so the detail page reflects on-disk state.
+final downloadedChaptersProvider =
+    FutureProvider.autoDispose.family<Set<String>, String>((ref, bookId) async {
+  final paths = await ref.read(downloadsServiceProvider).localPathsForBook(bookId);
+  return paths.keys.toSet();
+});
+
 /// Live player streams.
 final _playerProvider =
     Provider<AudioPlayer>((ref) => ref.watch(audiobookPlayerProvider).player);
@@ -184,6 +192,24 @@ class SearchNotifier extends AsyncNotifier<List<Book>> {
   }
 }
 
+/// Fallback Book for an id whose metadata isn't cached yet (e.g. a book
+/// downloaded in a previous app version). The cover still resolves from the id;
+/// the title is derived until the real metadata is cached.
+Book _minimalBook(String id) {
+  final pretty = id
+      .replaceAll(
+          RegExp(r'_(librivox|audiobook|by)\b.*$', caseSensitive: false), '')
+      .replaceAll(RegExp(r'[_\-]+'), ' ')
+      .trim();
+  final source = pretty.isEmpty ? id : pretty;
+  final title = source
+      .split(' ')
+      .map((w) =>
+          w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+      .join(' ');
+  return Book(id: id, title: title);
+}
+
 /// Library = books in progress (have a bookmark) + books with downloads,
 /// resolved to full Book objects from the local SQLite cache.
 class LibraryData {
@@ -211,8 +237,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
     Future<List<Book>> resolve(Iterable<String> ids) async {
       final books = <Book>[];
       for (final id in ids) {
-        final book = await repo.getCachedBook(id);
-        if (book != null) books.add(book);
+        books.add(await repo.getCachedBook(id) ?? _minimalBook(id));
       }
       return books;
     }

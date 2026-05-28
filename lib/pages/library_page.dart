@@ -14,6 +14,37 @@ class LibraryPage extends ConsumerWidget {
     );
   }
 
+  Future<void> _removeDownload(
+      BuildContext context, WidgetRef ref, Book book) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove downloads?'),
+        content: Text(
+            'Delete the downloaded chapters of "${book.title}" from this device?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(downloadsServiceProvider).deleteBook(book.id);
+    ref.invalidate(downloadedChaptersProvider(book.id));
+    await ref.read(libraryProvider.notifier).refresh();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Removed "${book.title}"')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(libraryProvider);
@@ -23,9 +54,9 @@ class LibraryPage extends ConsumerWidget {
         onRefresh: () => ref.read(libraryProvider.notifier).refresh(),
         child: CustomScrollView(
           slivers: [
-            SliverAppBar.large(
+            SliverAppBar(
+              pinned: true,
               title: const Text('Library'),
-              floating: true,
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
@@ -71,7 +102,12 @@ class LibraryPage extends ConsumerWidget {
                         itemBuilder: (context, i) => BookListRow(
                           book: data.downloaded[i],
                           subtitleOverride: data.downloaded[i].author,
-                          trailing: const Icon(Icons.download_done, size: 20),
+                          trailing: IconButton(
+                            tooltip: 'Remove download',
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () =>
+                                _removeDownload(context, ref, data.downloaded[i]),
+                          ),
                           onTap: () => _openDetail(context, data.downloaded[i]),
                         ),
                       ),

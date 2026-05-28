@@ -24,6 +24,48 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   int _bulkDone = 0;
   int _bulkTotal = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // Cache the book so Library can resolve it later (downloads / bookmarks
+    // are looked up by id from the local cache).
+    ref.read(repositoryProvider).cacheBook(widget.book);
+  }
+
+  void _refreshDownloadState() {
+    ref.invalidate(downloadedChaptersProvider(widget.book.id));
+    ref.invalidate(libraryProvider);
+  }
+
+  Future<void> _removeDownloads() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove downloads?'),
+        content: Text(
+            'Delete the downloaded chapters of "${widget.book.title}" from this device?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(downloadsServiceProvider).deleteBook(widget.book.id);
+    _refreshDownloadState();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Removed downloads')),
+      );
+    }
+  }
+
   Future<void> _play(List<AudioFile> chapters, int index,
       {Duration position = Duration.zero, bool openNowPlaying = false}) async {
     final controller = ref.read(audiobookPlayerProvider);
@@ -96,6 +138,11 @@ class _DetailPageState extends ConsumerState<DetailPage> {
             s == TaskStatus.failed ||
             s == TaskStatus.canceled) {
           setState(() => _downloading.remove(update.task.taskId));
+          // Reflect each finished chapter immediately, not only when the whole
+          // batch completes.
+          if (s == TaskStatus.complete) {
+            ref.invalidate(downloadedChaptersProvider(widget.book.id));
+          }
         }
       },
     );
@@ -105,7 +152,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       _bulkDownloading = false;
       _downloading.removeAll(tasks.map((t) => t.taskId));
     });
-    ref.invalidate(libraryProvider);
+    _refreshDownloadState();
     final failed = batch.numFailed;
     messenger.showSnackBar(
       SnackBar(
@@ -139,7 +186,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     if (result.status == TaskStatus.complete) {
-      ref.invalidate(libraryProvider);
+      _refreshDownloadState();
       messenger.showSnackBar(
         SnackBar(content: Text('Downloaded ${task.filename}')),
       );
@@ -156,6 +203,9 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     final theme = Theme.of(context);
     final chaptersAsync = ref.watch(chaptersProvider(widget.book));
     final bookmark = ref.watch(bookmarkProvider(widget.book.id)).value;
+    final downloaded =
+        ref.watch(downloadedChaptersProvider(widget.book.id)).value ??
+            const <String>{};
     final coverColor =
         ref.watch(coverColorProvider(widget.book.image)).value ??
             theme.colorScheme.primary;
@@ -203,48 +253,76 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                     if (widget.book.description?.isNotEmpty ?? false) ...[
                       Text('About', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
-                      Text(widget.book.description!,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(height: 1.5)),
+                      _ExpandableText(widget.book.description!),
                       const SizedBox(height: 20),
                     ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text('${chapters.length} chapters',
-                              style: theme.textTheme.titleLarge),
-                        ),
-                        if (_bulkDownloading)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('$_bulkDone/$_bulkTotal',
-                                  style: theme.textTheme.labelLarge),
-                            ],
-                          )
-                        else
-                          TextButton.icon(
-                            onPressed: () => _downloadAll(chapters),
-                            icon: const Icon(
-                                Icons.download_for_offline_outlined,
-                                size: 20),
-                            label: const Text('Download all'),
+                    Builder(builder: (context) {
+                      final allDownloaded = chapters.isNotEmpty &&
+                          chapters.every((c) => downloaded.contains(c.name));
+                      final anyDownloaded =
+                          chapters.any((c) => downloaded.contains(c.name));
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text('${chapters.length} chapters',
+                                style: theme.textTheme.titleLarge),
                           ),
-                      ],
-                    ),
+                          if (_bulkDownloading)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('$_bulkDone/$_bulkTotal',
+                                    style: theme.textTheme.labelLarge),
+                              ],
+                            )
+                          else ...[
+                            if (allDownloaded)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.download_done,
+                                      size: 20,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: 6),
+                                  Text('Downloaded',
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                              color:
+                                                  theme.colorScheme.primary)),
+                                ],
+                              )
+                            else
+                              TextButton.icon(
+                                onPressed: () => _downloadAll(chapters),
+                                icon: const Icon(
+                                    Icons.download_for_offline_outlined,
+                                    size: 20),
+                                label: const Text('Download all'),
+                              ),
+                            if (anyDownloaded)
+                              IconButton(
+                                tooltip: 'Remove downloads',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: _removeDownloads,
+                              ),
+                          ],
+                        ],
+                      );
+                    }),
                     const SizedBox(height: 4),
                     for (var i = 0; i < chapters.length; i++)
                       _ChapterTile(
                         index: i,
                         chapter: chapters[i],
                         isBookmarkChapter: bookmark?.chapterIndex == i,
+                        isDownloaded: downloaded.contains(chapters[i].name),
                         isDownloading: _downloading.contains(
                             DownloadsServiceTaskId(
                                     widget.book.id, chapters[i].name)
@@ -449,6 +527,7 @@ class _ChapterTile extends StatelessWidget {
   final int index;
   final AudioFile chapter;
   final bool isBookmarkChapter;
+  final bool isDownloaded;
   final bool isDownloading;
   final VoidCallback onPlay;
   final VoidCallback onDownload;
@@ -457,6 +536,7 @@ class _ChapterTile extends StatelessWidget {
     required this.index,
     required this.chapter,
     required this.isBookmarkChapter,
+    required this.isDownloaded,
     required this.isDownloading,
     required this.onPlay,
     required this.onDownload,
@@ -477,21 +557,99 @@ class _ChapterTile extends StatelessWidget {
       ),
       title: Text(chapter.title ?? chapter.name ?? 'Chapter ${index + 1}',
           maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: chapter.length != null
-          ? Text(formatChapterLength(chapter.length!))
-          : null,
-      trailing: isDownloading
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : IconButton(
-              tooltip: 'Download',
-              icon: const Icon(Icons.download_outlined),
-              onPressed: onDownload,
-            ),
+      subtitle: Row(
+        children: [
+          if (chapter.length != null) Text(formatChapterLength(chapter.length!)),
+          if (isDownloaded) ...[
+            if (chapter.length != null) const SizedBox(width: 8),
+            Icon(Icons.download_done,
+                size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 2),
+            Text('Saved',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.primary)),
+          ],
+        ],
+      ),
+      trailing: _trailing(theme),
       onTap: onPlay,
+    );
+  }
+
+  Widget _trailing(ThemeData theme) {
+    if (isDownloading) {
+      return const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (isDownloaded) {
+      return Icon(Icons.download_done, color: theme.colorScheme.primary);
+    }
+    return IconButton(
+      tooltip: 'Download',
+      icon: const Icon(Icons.download_outlined),
+      onPressed: onDownload,
+    );
+  }
+}
+
+class _ExpandableText extends StatefulWidget {
+  final String text;
+  const _ExpandableText(this.text);
+
+  static const _trimLines = 4;
+
+  @override
+  State<_ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<_ExpandableText> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(height: 1.5);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tp = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: _ExpandableText._trimLines,
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final overflows = tp.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              alignment: Alignment.topCenter,
+              curve: Curves.easeInOut,
+              child: Text(
+                widget.text,
+                style: style,
+                maxLines: _expanded ? null : _ExpandableText._trimLines,
+                overflow:
+                    _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
+              ),
+            ),
+            if (overflows)
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: Text(_expanded ? 'Show less' : 'Read more'),
+              ),
+          ],
+        );
+      },
     );
   }
 }

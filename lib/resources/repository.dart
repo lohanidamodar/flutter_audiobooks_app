@@ -34,6 +34,10 @@ class Repository {
 
   Future<Book?> getCachedBook(String id) => DatabaseHelper().getBook(id);
 
+  /// Persist a book so it can be resolved later by the Library (downloaded /
+  /// continue-listening books are looked up by id from the local cache).
+  Future<void> cacheBook(Book book) => DatabaseHelper().saveBook(book);
+
   Future<List<AudioFile>> fetchAudioFiles(String? bookId) async {
     List<AudioFile> audiofiles;
     audiofiles = await caches[0].fetchAudioFiles(bookId);

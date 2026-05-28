@@ -46,4 +46,19 @@ class DownloadsService {
     }
     return result;
   }
+
+  /// Deletes all downloaded files for a book and forgets their records.
+  Future<void> deleteBook(String bookId) async {
+    final dir = directoryFor(bookId);
+    final records = await FileDownloader().database.allRecords();
+    for (final record in records.where((r) => r.task.directory == dir)) {
+      try {
+        final file = File(await record.task.filePath());
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {
+        // ignore: best-effort cleanup
+      }
+      await FileDownloader().database.deleteRecordWithId(record.task.taskId);
+    }
+  }
 }
