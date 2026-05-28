@@ -20,6 +20,9 @@ class DetailPage extends ConsumerStatefulWidget {
 
 class _DetailPageState extends ConsumerState<DetailPage> {
   final Set<String> _downloading = {};
+  bool _bulkDownloading = false;
+  int _bulkDone = 0;
+  int _bulkTotal = 0;
 
   Future<void> _play(List<AudioFile> chapters, int index,
       {Duration position = Duration.zero, bool openNowPlaying = false}) async {
@@ -47,22 +50,79 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     ref.invalidate(bookmarkProvider(widget.book.id));
   }
 
+  DownloadTask _taskFor(AudioFile chapter) => DownloadTask(
+        taskId: DownloadsServiceTaskId(widget.book.id, chapter.name).value,
+        url: chapter.url!,
+        filename: chapter.name ?? '${widget.book.id}.mp3',
+        baseDirectory: BaseDirectory.applicationDocuments,
+        directory: 'audiobooks/${widget.book.id}',
+        updates: Updates.status,
+        allowPause: true,
+        retries: 3,
+      );
+
+  Future<void> _downloadAll(List<AudioFile> chapters) async {
+    if (_bulkDownloading) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final localPaths =
+        await ref.read(downloadsServiceProvider).localPathsForBook(widget.book.id);
+    final pending = chapters
+        .where((c) => c.url != null && !localPaths.containsKey(c.name))
+        .toList();
+    if (pending.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('All chapters already downloaded')),
+      );
+      return;
+    }
+
+    final tasks = [for (final c in pending) _taskFor(c)];
+    setState(() {
+      _bulkDownloading = true;
+      _bulkDone = 0;
+      _bulkTotal = tasks.length;
+      _downloading.addAll(tasks.map((t) => t.taskId));
+    });
+
+    final batch = await FileDownloader().downloadBatch(
+      tasks,
+      batchProgressCallback: (succeeded, failed) {
+        if (mounted) setState(() => _bulkDone = succeeded + failed);
+      },
+      taskStatusCallback: (update) {
+        if (!mounted) return;
+        final s = update.status;
+        if (s == TaskStatus.complete ||
+            s == TaskStatus.failed ||
+            s == TaskStatus.canceled) {
+          setState(() => _downloading.remove(update.task.taskId));
+        }
+      },
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _bulkDownloading = false;
+      _downloading.removeAll(tasks.map((t) => t.taskId));
+    });
+    ref.invalidate(libraryProvider);
+    final failed = batch.numFailed;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(failed == 0
+            ? 'Downloaded ${tasks.length} chapters'
+            : '${batch.numSucceeded} downloaded · $failed failed'),
+      ),
+    );
+  }
+
   Future<void> _downloadChapter(AudioFile chapter) async {
     if (chapter.url == null) return;
     final id = DownloadsServiceTaskId(widget.book.id, chapter.name).value;
     if (_downloading.contains(id)) return;
     setState(() => _downloading.add(id));
 
-    final task = DownloadTask(
-      taskId: id,
-      url: chapter.url!,
-      filename: chapter.name ?? '$id.mp3',
-      baseDirectory: BaseDirectory.applicationDocuments,
-      directory: 'audiobooks/${widget.book.id}',
-      updates: Updates.statusAndProgress,
-      allowPause: true,
-      retries: 3,
-    );
+    final task = _taskFor(chapter);
 
     final result = await FileDownloader().download(
       task,
@@ -148,8 +208,37 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                               ?.copyWith(height: 1.5)),
                       const SizedBox(height: 20),
                     ],
-                    Text('${chapters.length} chapters',
-                        style: theme.textTheme.titleLarge),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('${chapters.length} chapters',
+                              style: theme.textTheme.titleLarge),
+                        ),
+                        if (_bulkDownloading)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('$_bulkDone/$_bulkTotal',
+                                  style: theme.textTheme.labelLarge),
+                            ],
+                          )
+                        else
+                          TextButton.icon(
+                            onPressed: () => _downloadAll(chapters),
+                            icon: const Icon(
+                                Icons.download_for_offline_outlined,
+                                size: 20),
+                            label: const Text('Download all'),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     for (var i = 0; i < chapters.length; i++)
                       _ChapterTile(
