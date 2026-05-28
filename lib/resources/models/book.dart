@@ -1,4 +1,4 @@
-const imageRoot = "https://archive.org/services/get-item-image.php?identifier=";
+const imageRoot = 'https://archive.org/services/get-item-image.php?identifier=';
 
 class Book {
   final String title;
@@ -8,72 +8,113 @@ class Book {
   final String? author;
   final DateTime? date;
   final int? downloads;
-  final List<dynamic>? subject;
+  final List<String> subject;
   final int? size;
   final double? rating;
   final int? reviews;
 
-  Book.fromJson(Map jsonBook):
-    id=jsonBook["identifier"] ?? '',
-    title=jsonBook["title"] ?? '',
-    totalTime=jsonBook["runtime"],
-    author=jsonBook["creator"],
-    date= jsonBook['date'] != null ? DateTime.parse(jsonBook["date"]) : null,
-    downloads=jsonBook["downloads"],
-    subject= jsonBook["subject"] is String ? [jsonBook["subject"]] : jsonBook["subject"],
-    size=jsonBook["item_size"],
-    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"].toString()) : null,
-    reviews=jsonBook["num_reviews"],
-    description=jsonBook["description"];
+  const Book({
+    required this.id,
+    required this.title,
+    this.description,
+    this.totalTime,
+    this.author,
+    this.date,
+    this.downloads,
+    this.subject = const [],
+    this.size,
+    this.rating,
+    this.reviews,
+  });
 
-  Book.fromDB(Map jsonBook):
-    id=jsonBook["identifier"] ?? '',
-    title=jsonBook["title"] ?? '',
-    totalTime=jsonBook["runtime"],
-    author=jsonBook["creator"],
-    date=DateTime.fromMillisecondsSinceEpoch(int.parse(jsonBook["date"])),
-    downloads=jsonBook["downloads"],
-    subject=jsonBook["subject"].split(';'),
-    size=jsonBook["item_size"],
-    rating= jsonBook["avg_rating"] != null ? double.parse(jsonBook["avg_rating"]) : null,
-    reviews=jsonBook["num_reviews"],
-    description=jsonBook["description"];
-
-
-  static List<Book> fromJsonArray(List jsonBook) {
-    List<Book> books = <Book>[];
-    for (var book in jsonBook) {
-      books.add(Book.fromJson(book));
+  factory Book.fromJson(Map json) {
+    final rawSubject = json['subject'];
+    final subject = rawSubject is String
+        ? <String>[rawSubject]
+        : rawSubject is List
+            ? rawSubject.map((e) => e.toString()).toList()
+            : <String>[];
+    final rawDate = json['date'];
+    DateTime? parsedDate;
+    if (rawDate is String && rawDate.isNotEmpty) {
+      parsedDate = DateTime.tryParse(rawDate);
     }
-    return books;
+    return Book(
+      id: (json['identifier'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      totalTime: json['runtime']?.toString(),
+      author: json['creator']?.toString(),
+      date: parsedDate,
+      downloads: _asInt(json['downloads']),
+      subject: subject,
+      size: _asInt(json['item_size']),
+      rating: _asDouble(json['avg_rating']),
+      reviews: _asInt(json['num_reviews']),
+      description: json['description']?.toString(),
+    );
   }
-  static List<Book> fromDbArray(List jsonBook) {
-    List<Book> books = <Book>[];
-    for (var book in jsonBook) {
-      books.add(Book.fromDB(book));
+
+  factory Book.fromDB(Map json) {
+    final rawSubject = json['subject'];
+    final subject = rawSubject is String && rawSubject.isNotEmpty
+        ? rawSubject.split(';')
+        : <String>[];
+    final rawDate = json['date'];
+    DateTime? parsedDate;
+    if (rawDate is String && rawDate.isNotEmpty) {
+      final millis = int.tryParse(rawDate);
+      if (millis != null) {
+        parsedDate = DateTime.fromMillisecondsSinceEpoch(millis);
+      }
     }
-    return books;
+    return Book(
+      id: (json['identifier'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      totalTime: json['runtime']?.toString(),
+      author: json['creator']?.toString(),
+      date: parsedDate,
+      downloads: _asInt(json['downloads']),
+      subject: subject,
+      size: _asInt(json['item_size']),
+      rating: _asDouble(json['avg_rating']),
+      reviews: _asInt(json['num_reviews']),
+      description: json['description']?.toString(),
+    );
   }
 
-  Map<String,dynamic> toMap() {
-    return Map<String, dynamic>.from({
-      "identifier":id,
-      "title":title,
-      "description":description,
-      "runtime":totalTime,
-      "creator":author,
-      "date":date!.millisecondsSinceEpoch.toString(),
-      "downloads":downloads,
-      "subject":subject!.join(";"),
-      "item_size":size,
-      "avg_rating":rating,
-      "num_reviews":reviews,
-    });
-  }
+  static List<Book> fromJsonArray(List jsonBook) =>
+      [for (final b in jsonBook) Book.fromJson(b)];
 
-  String? getIdentifier() {
-    return id;
-  }
+  static List<Book> fromDbArray(List jsonBook) =>
+      [for (final b in jsonBook) Book.fromDB(b)];
 
-  String get image => "$imageRoot${getIdentifier()}"; 
+  Map<String, dynamic> toMap() => {
+        'identifier': id,
+        'title': title,
+        'description': description,
+        'runtime': totalTime,
+        'creator': author,
+        'date': date?.millisecondsSinceEpoch.toString(),
+        'downloads': downloads,
+        'subject': subject.join(';'),
+        'item_size': size,
+        'avg_rating': rating,
+        'num_reviews': reviews,
+      };
+
+  String get image => '$imageRoot$id';
+}
+
+int? _asInt(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString());
+}
+
+double? _asDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is double) return v;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString());
 }

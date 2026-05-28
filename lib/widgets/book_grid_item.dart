@@ -6,7 +6,7 @@ class BookGridItem extends StatelessWidget {
   final Book book;
   final void Function()? onTap;
 
-  const BookGridItem({Key? key, required this.book, this.onTap}) : super(key: key);
+  const BookGridItem({super.key, required this.book, this.onTap});
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

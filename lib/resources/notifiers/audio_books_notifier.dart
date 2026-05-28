@@ -4,55 +4,76 @@ import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:flutter/foundation.dart';
 
+enum LoadStatus { initial, loading, ready, error }
+
 class AudioBooksNotifier with ChangeNotifier {
+  final Repository _repository;
+
+  AudioBooksNotifier({Repository? repository})
+      : _repository = repository ?? Repository() {
+    refresh();
+  }
+
   final List<Book> _books = [];
   List<Book> _top = [];
-  bool _isLoading = false;
+
+  LoadStatus _status = LoadStatus.initial;
+  LoadStatus _topStatus = LoadStatus.initial;
+  Object? _error;
+  Object? _topError;
   bool _hasReachedMax = false;
-
-  bool get hasReachedMax => _hasReachedMax;
-  bool get isLoading => _isLoading;
-
 
   UnmodifiableListView<Book> get books => UnmodifiableListView(_books);
   UnmodifiableListView<Book> get topBooks => UnmodifiableListView(_top);
 
-  AudioBooksNotifier() {
-    if(_books.isEmpty) {
-      getBooks();
-      getTopBooks();
-    }
+  LoadStatus get status => _status;
+  LoadStatus get topStatus => _topStatus;
+  Object? get error => _error;
+  Object? get topError => _topError;
+  bool get hasReachedMax => _hasReachedMax;
+  bool get isLoading => _status == LoadStatus.loading;
+
+  Future<void> refresh() async {
+    _books.clear();
+    _top = [];
+    _hasReachedMax = false;
+    _error = null;
+    _topError = null;
+    await Future.wait([loadMoreBooks(), loadTopBooks()]);
   }
 
-  
-
-  Future<void> getTopBooks() async {
-    // if(_isLoading) return;
-    _isLoading = true;
+  Future<void> loadTopBooks() async {
+    if (_topStatus == LoadStatus.loading) return;
+    _topStatus = LoadStatus.loading;
+    notifyListeners();
     try {
-      List<Book> res = await Repository().topBooks();
-      _top = res;
-    }catch(e) {
-      debugPrint(e.toString());
+      _top = await _repository.topBooks();
+      _topStatus = LoadStatus.ready;
+    } catch (e, st) {
+      _topError = e;
+      _topStatus = LoadStatus.error;
+      debugPrint('topBooks failed: $e\n$st');
     }
-    _isLoading = false;
     notifyListeners();
   }
-  Future<void> getBooks() async {
-    if(_isLoading) return;
-    _isLoading = true;
+
+  Future<void> loadMoreBooks() async {
+    if (_status == LoadStatus.loading || _hasReachedMax) return;
+    _status = LoadStatus.loading;
+    notifyListeners();
     try {
-      List<Book> res = await Repository().fetchBooks(_books.length, 20);
-      if(res.isEmpty) {
+      final page = await _repository.fetchBooks(_books.length, 20);
+      if (page.isEmpty) {
         _hasReachedMax = true;
       } else {
-        _books.addAll(res);
+        _books.addAll(page);
       }
-    }catch(e) {
-      debugPrint(e.toString());
+      _status = LoadStatus.ready;
+    } catch (e, st) {
+      _error = e;
+      _status = LoadStatus.error;
+      debugPrint('fetchBooks failed: $e\n$st');
     }
-    _isLoading = false;
     notifyListeners();
   }
-
 }

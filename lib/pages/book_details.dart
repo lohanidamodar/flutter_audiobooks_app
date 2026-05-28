@@ -1,193 +1,233 @@
-import 'package:audio_service/audio_service.dart';
-import 'package:audiobooks/main.dart';
+import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:audiobooks/widgets/player_service.dart';
 import 'package:audiobooks/widgets/title.dart';
+import 'package:background_downloader/background_downloader.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
-// import 'package:flutter_downloader/flutter_downloader.dart';
-
+import 'package:just_audio/just_audio.dart';
 
 class DetailPage extends StatefulWidget {
   final Book book;
-  const DetailPage(this.book, {Key? key}) : super(key: key);
+  const DetailPage(this.book, {super.key});
 
   @override
-  DetailPageState createState() {
-    return DetailPageState();
-  }
+  State<DetailPage> createState() => _DetailPageState();
 }
 
-class DetailPageState extends State<DetailPage> {
-  // var taskId;
-  String? url;
-  String? title;
-  late bool toplay;
-  late StreamSubscription<PlaybackState> playbackStateListner;
+class _DetailPageState extends State<DetailPage> {
+  late Future<List<AudioFile>> _audioFilesFuture;
+  final Set<String> _downloading = {};
 
-  /* _downloadBook() async{
-    var path = await getApplicationDocumentsDirectory();
-    taskId = await FlutterDownloader.enqueue(
-      url: widget.book.id,
-      savedDir: path.path,
-      showNotification: true, // show download progress in status bar (for Android)
-      openFileFromNotification: true, // click on notification to open downloaded file (for Android)
-    );
-    await FlutterDownloader.loadTasks();
-  } */
+  AudioPlayer get _player => AudiobookPlayer.instance.player;
 
   @override
   void initState() {
     super.initState();
-    toplay = false;
-    playbackStateListner = audioHandler.playbackState.listen((state) {
-      if (state.processingState == AudioProcessingState.idle) {
-        if (toplay) {
-          // start();
-          if (mounted) toplay = false;
+    _audioFilesFuture = Repository().fetchAudioFiles(widget.book.id);
+  }
+
+  Future<void> _playChapter(List<AudioFile> chapters, int index) async {
+    final loadedBook = AudiobookPlayer.instance.currentBook;
+    if (loadedBook?.id != widget.book.id) {
+      await AudiobookPlayer.instance.loadBook(
+        book: widget.book,
+        chapters: chapters,
+        startIndex: index,
+      );
+    } else {
+      await _player.seek(Duration.zero, index: index);
+    }
+    await _player.play();
+  }
+
+  Future<void> _downloadChapter(AudioFile chapter) async {
+    final id = '${widget.book.id}-${chapter.name}';
+    if (_downloading.contains(id)) return;
+    setState(() => _downloading.add(id));
+
+    final task = DownloadTask(
+      taskId: id,
+      url: chapter.url!,
+      filename: chapter.name ?? '$id.mp3',
+      baseDirectory: BaseDirectory.applicationDocuments,
+      directory: 'audiobooks/${widget.book.id}',
+      updates: Updates.statusAndProgress,
+      allowPause: true,
+      retries: 3,
+    );
+
+    final result = await FileDownloader().download(
+      task,
+      onProgress: (_) {},
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == TaskStatus.complete ||
+            status == TaskStatus.failed ||
+            status == TaskStatus.canceled) {
+          setState(() => _downloading.remove(id));
         }
-      }
-    });
-  }
+      },
+    );
 
-  @override
-  void dispose() {
-    playbackStateListner.cancel();
-    super.dispose();
-  }
-
-  Future<List<AudioFile>> _getRssFeeds() {
-    return Repository().fetchAudioFiles(widget.book.id);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    switch (result.status) {
+      case TaskStatus.complete:
+        messenger.showSnackBar(
+          SnackBar(content: Text('Downloaded ${task.filename}')),
+        );
+        break;
+      case TaskStatus.failed:
+      case TaskStatus.notFound:
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to download ${task.filename}')),
+        );
+        break;
+      default:
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.book.title),
-        ),
-        body: Stack(
-          children: <Widget>[
-            ListView(
-              padding:
-                  EdgeInsets.fromLTRB(20.0, 20.0, 20.0, url != null ? 70 : 20),
-              children: <Widget>[
-                SizedBox(
-                  height: 100,
-                  child: Row(
-                    children: <Widget>[
-                      Hero(
-                        tag: "${widget.book.id}_image",
+      appBar: AppBar(title: Text(widget.book.title)),
+      body: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 240),
+            children: [
+              SizedBox(
+                height: 140,
+                child: Row(
+                  children: [
+                    Hero(
+                      tag: '${widget.book.id}_image',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
                         child: CachedNetworkImage(
-                            imageUrl: widget.book.image, fit: BoxFit.contain),
-                      ),
-                      const SizedBox(width: 20.0),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            BookTitle(widget.book.title),
-                            Text(
-                              "${widget.book.author}",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .subtitle1!
-                                  .copyWith(),
-                            ),
-                            const SizedBox(
-                              height: 5.0,
-                            ),
-                            Text(
-                              "Total time: ${widget.book.totalTime}",
-                              style: Theme.of(context).textTheme.subtitle1,
-                            ),
-                          ],
+                          imageUrl: widget.book.image,
+                          width: 140,
+                          fit: BoxFit.cover,
                         ),
-                      )
-                    ],
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          BookTitle(widget.book.title),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.book.author ?? 'Unknown author',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 6),
+                          if (widget.book.totalTime != null)
+                            Text(
+                              'Total time: ${widget.book.totalTime}',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
-                FutureBuilder(
-                  future: _getRssFeeds(),
-                  builder: (BuildContext context,
-                      AsyncSnapshot<List<AudioFile>> snapshot) {
-                    if (snapshot.hasData) {
-                      final audios = snapshot.data!;
-                      return Column(
-                        children: audios
-                            .map((item) => ListTile(
-                                  title: Text(item.title!),
-                                  leading: const Icon(Icons.play_circle_filled),
-                                  onTap: () async {
-                                    // // if(url == item.url) AudioService.play();
-                                    // SharedPreferences prefs =
-                                    //     await SharedPreferences.getInstance();
-                                    // await prefs.setString(
-                                    //     "play_url", item.url);
-                                    // await prefs.setString(
-                                    //     "book_id", item.bookId);
-                                    // await prefs.setInt(
-                                    //     "track", snapshot.data.indexOf(item));
-                                    // setState(() {
-                                    //   toplay = true;
-                                    // });
-                                    // await audioHandler.prepare();
-                                    // audioHandler.play();
-                                    // AudioService.stop();
-                                    // start();
-                                    final mediaItems = audios
-                                        .map((chapter) => MediaItem(
-                                              id: chapter.url ?? '',
-                                              album: widget.book.title,
-                                              title: chapter.name ?? '',
-                                              extras: {
-                                                'url': chapter.url,
-                                                'bookId': chapter.bookId
-                                              },
-                                            ))
-                                        .toList();
-
-                                    // print('tap index $index');
-                                    // print('tap index media ${mediaItems.length}');
-                                    // print('tap index media ID=== ${mediaItems[index].title}');
-
-                                    await audioHandler
-                                        .updateQueue(mediaItems);
-                                    await audioHandler.skipToQueueItem(
-                                        audios.indexOf(item));
-                                    audioHandler.play();
-                                    setState(() {
-                                      url = item.url;
-                                      title = item.title;
-                                    });
-                                  },
-                                ))
-                            .toList(),
-                      );
-                    } else {
-                      return const CircularProgressIndicator();
-                    }
-                  },
-                )
-              ],
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.grey.shade100,
-                child: const PlayerService(),
               ),
+              const SizedBox(height: 20),
+              Text('Chapters', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              FutureBuilder<List<AudioFile>>(
+                future: _audioFilesFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final chapters = snapshot.data!;
+                  return Column(
+                    children: [
+                      for (var i = 0; i < chapters.length; i++)
+                        _ChapterTile(
+                          chapter: chapters[i],
+                          isDownloading: _downloading
+                              .contains('${widget.book.id}-${chapters[i].name}'),
+                          onPlay: () => _playChapter(chapters, i),
+                          onDownload: () => _downloadChapter(chapters[i]),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Material(
+              elevation: 12,
+              color: theme.colorScheme.surface,
+              child: const PlayerService(),
             ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChapterTile extends StatelessWidget {
+  final AudioFile chapter;
+  final bool isDownloading;
+  final VoidCallback onPlay;
+  final VoidCallback onDownload;
+
+  const _ChapterTile({
+    required this.chapter,
+    required this.isDownloading,
+    required this.onPlay,
+    required this.onDownload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: IconButton(
+        icon: const Icon(Icons.play_circle_filled),
+        iconSize: 32,
+        onPressed: onPlay,
+      ),
+      title: Text(chapter.title ?? chapter.name ?? 'Chapter'),
+      subtitle: chapter.length != null
+          ? Text(_formatLength(chapter.length!))
+          : null,
+      trailing: isDownloading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: onDownload,
+            ),
+      onTap: onPlay,
+    );
+  }
+
+  String _formatLength(double seconds) {
+    final d = Duration(seconds: seconds.round());
+    final m = d.inMinutes;
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '${m}m ${s}s';
   }
 }

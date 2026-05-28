@@ -3,109 +3,116 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class SeekBar extends StatefulWidget {
-  final Duration? duration;
-  final Duration? position;
+  final Duration duration;
+  final Duration position;
   final Duration bufferedPosition;
   final ValueChanged<Duration>? onChanged;
   final ValueChanged<Duration>? onChangeEnd;
 
-  const SeekBar({Key? key, 
-     this.duration,
-     this.position,
+  const SeekBar({
+    super.key,
+    required this.duration,
+    required this.position,
     this.bufferedPosition = Duration.zero,
     this.onChanged,
     this.onChangeEnd,
-  }) : super(key: key);
+  });
 
   @override
-  SeekBarState createState() => SeekBarState();
+  State<SeekBar> createState() => _SeekBarState();
 }
 
-class SeekBarState extends State<SeekBar> {
+class _SeekBarState extends State<SeekBar> {
   double? _dragValue;
   bool _dragging = false;
-   late SliderThemeData _sliderThemeData;
+  late SliderThemeData _sliderThemeData;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    _sliderThemeData = SliderTheme.of(context).copyWith(
-      trackHeight: 2.0,
-    );
+    _sliderThemeData = SliderTheme.of(context).copyWith(trackHeight: 2.0);
   }
 
   @override
   Widget build(BuildContext context) {
+    final maxMs = widget.duration.inMilliseconds.toDouble();
     final value = min(
-      _dragValue ?? widget.position!.inMilliseconds.toDouble(),
-      widget.duration!.inMilliseconds.toDouble(),
+      _dragValue ?? widget.position.inMilliseconds.toDouble(),
+      maxMs,
     );
     if (_dragValue != null && !_dragging) {
       _dragValue = null;
     }
+    final theme = Theme.of(context);
     return Stack(
       children: [
-        SliderTheme(
-          data: _sliderThemeData.copyWith(
-            thumbShape: HiddenThumbComponentShape(),
-            activeTrackColor: Colors.blue.shade100,
-            inactiveTrackColor: Colors.grey.shade300,
-          ),
-          child: ExcludeSemantics(
-            child: Slider(
-              min: 0.0,
-              max: widget.duration!.inMilliseconds.toDouble(),
-              value: min(widget.bufferedPosition.inMilliseconds.toDouble(),
-                  widget.duration!.inMilliseconds.toDouble()),
-              onChanged: (value) {},
+        if (maxMs > 0)
+          SliderTheme(
+            data: _sliderThemeData.copyWith(
+              thumbShape: _HiddenThumbComponentShape(),
+              activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+            ),
+            child: ExcludeSemantics(
+              child: Slider(
+                min: 0.0,
+                max: maxMs,
+                value: min(
+                  widget.bufferedPosition.inMilliseconds.toDouble(),
+                  maxMs,
+                ),
+                onChanged: (_) {},
+              ),
             ),
           ),
-        ),
         SliderTheme(
           data: _sliderThemeData.copyWith(
             inactiveTrackColor: Colors.transparent,
           ),
           child: Slider(
             min: 0.0,
-            max: widget.duration!.inMilliseconds.toDouble(),
-            value: value,
-            onChanged: (value) {
-              if (!_dragging) {
-                _dragging = true;
-              }
-              setState(() {
-                _dragValue = value;
-              });
-              if (widget.onChanged != null) {
-                widget.onChanged!(Duration(milliseconds: value.round()));
-              }
-            },
-            onChangeEnd: (value) {
-              if (widget.onChangeEnd != null) {
-                widget.onChangeEnd!(Duration(milliseconds: value.round()));
-              }
-              _dragging = false;
-            },
+            max: maxMs > 0 ? maxMs : 1.0,
+            value: maxMs > 0 ? value : 0.0,
+            onChanged: maxMs > 0
+                ? (v) {
+                    if (!_dragging) _dragging = true;
+                    setState(() => _dragValue = v);
+                    widget.onChanged?.call(Duration(milliseconds: v.round()));
+                  }
+                : null,
+            onChangeEnd: maxMs > 0
+                ? (v) {
+                    widget.onChangeEnd?.call(Duration(milliseconds: v.round()));
+                    _dragging = false;
+                  }
+                : null,
           ),
         ),
         Positioned(
           right: 16.0,
           bottom: 0.0,
           child: Text(
-              RegExp(r'((^0*[1-9]\d*:)?\d{2}:\d{2})\.\d+$')
-                      .firstMatch("$_remaining")
-                      ?.group(1) ??
-                  '$_remaining',
-              style: Theme.of(context).textTheme.caption),
+            _formatDuration(_remaining),
+            style: theme.textTheme.bodySmall,
+          ),
         ),
       ],
     );
   }
 
-  Duration get _remaining => widget.duration! - widget.position!;
+  Duration get _remaining => widget.duration - widget.position;
+
+  String _twoDigits(int n) => n.toString().padLeft(2, '0');
+
+  String _formatDuration(Duration d) {
+    final hours = d.inHours;
+    final minutes = _twoDigits(d.inMinutes.remainder(60));
+    final seconds = _twoDigits(d.inSeconds.remainder(60));
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
 }
-class HiddenThumbComponentShape extends SliderComponentShape {
+
+class _HiddenThumbComponentShape extends SliderComponentShape {
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) => Size.zero;
 
