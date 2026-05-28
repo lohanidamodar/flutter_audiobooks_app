@@ -96,6 +96,14 @@ class AudiobookPlayer {
     await player.play();
   }
 
+  /// Stops playback and lets the system notification be dismissed. The player
+  /// transitions to ProcessingState.idle, which hides the in-app players.
+  Future<void> stop() async {
+    _currentBook = null;
+    _currentChapters = const [];
+    await player.stop();
+  }
+
   Future<void> dispose() async {
     await _positionSub?.cancel();
     await player.dispose();
@@ -106,7 +114,9 @@ Future<void> initAudioService() async {
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.popupbits.audiobooks.channel.audio',
     androidNotificationChannelName: 'Audiobook Playback',
-    androidNotificationOngoing: true,
+    // Not "ongoing": the notification can be swiped away when paused/stopped.
+    androidNotificationOngoing: false,
+    androidStopForegroundOnPause: true,
     androidShowNotificationBadge: true,
   );
 }

@@ -28,6 +28,14 @@ class NowPlayingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Close this page automatically if playback is stopped from anywhere.
+    ref.listen(playerStateProvider, (_, next) {
+      if (next.value?.processingState == ProcessingState.idle &&
+          Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+
     final mediaItem = ref.watch(mediaItemProvider).value;
     final artUrl = mediaItem?.artUri?.toString();
     final coverColor = artUrl != null
@@ -62,7 +70,10 @@ class NowPlayingPage extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  _TopBar(album: mediaItem?.album),
+                  _TopBar(
+                    album: mediaItem?.album,
+                    onStop: () => ref.read(audiobookPlayerProvider).stop(),
+                  ),
                   const Spacer(flex: 2),
                   _Cover(artUrl: artUrl, glow: glow),
                   const Spacer(flex: 2),
@@ -89,7 +100,8 @@ class NowPlayingPage extends ConsumerWidget {
 
 class _TopBar extends StatelessWidget {
   final String? album;
-  const _TopBar({this.album});
+  final VoidCallback onStop;
+  const _TopBar({this.album, required this.onStop});
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +134,12 @@ class _TopBar extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 48),
+        IconButton(
+          icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),
+          iconSize: 28,
+          tooltip: 'Stop',
+          onPressed: onStop,
+        ),
       ],
     );
   }

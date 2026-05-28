@@ -17,7 +17,11 @@ class MiniPlayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mediaItem = ref.watch(mediaItemProvider).value;
-    if (mediaItem == null) return const SizedBox.shrink();
+    final processing = ref.watch(playerStateProvider).value?.processingState;
+    // Hide once stopped (idle) so a stopped session leaves no lingering bar.
+    if (mediaItem == null || processing == ProcessingState.idle) {
+      return const SizedBox.shrink();
+    }
 
     final bottomInset =
         safeAreaBottom ? MediaQuery.viewPaddingOf(context).bottom : 0.0;
@@ -83,9 +87,11 @@ class MiniPlayer extends ConsumerWidget {
                   ),
                   _PlayPauseButton(player: player, ref: ref),
                   IconButton(
-                    iconSize: 26,
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: player.hasNext ? player.seekToNext : null,
+                    iconSize: 24,
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Stop',
+                    onPressed: () =>
+                        ref.read(audiobookPlayerProvider).stop(),
                   ),
                 ],
               ),
