@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:audiobooks/resources/duration_format.dart';
 import 'package:flutter/material.dart';
 
 class SeekBar extends StatefulWidget {
@@ -92,7 +93,7 @@ class _SeekBarState extends State<SeekBar> {
           right: 16.0,
           bottom: 0.0,
           child: Text(
-            _formatDuration(_remaining),
+            formatDuration(_remaining),
             style: theme.textTheme.bodySmall,
           ),
         ),
@@ -101,15 +102,6 @@ class _SeekBarState extends State<SeekBar> {
   }
 
   Duration get _remaining => widget.duration - widget.position;
-
-  String _twoDigits(int n) => n.toString().padLeft(2, '0');
-
-  String _formatDuration(Duration d) {
-    final hours = d.inHours;
-    final minutes = _twoDigits(d.inMinutes.remainder(60));
-    final seconds = _twoDigits(d.inSeconds.remainder(60));
-    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
-  }
 }
 
 class _HiddenThumbComponentShape extends SliderComponentShape {

@@ -1,36 +1,73 @@
+import 'dart:async';
+
 import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
+import 'package:audiobooks/resources/playback_bookmarks.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 class AudiobookPlayer {
-  AudiobookPlayer._();
+  AudiobookPlayer._() {
+    _wireBookmarkPersistence();
+  }
   static final AudiobookPlayer instance = AudiobookPlayer._();
 
   final AudioPlayer player = AudioPlayer();
 
   Book? _currentBook;
+  List<AudioFile> _currentChapters = const [];
   Book? get currentBook => _currentBook;
+  List<AudioFile> get currentChapters =>
+      List.unmodifiable(_currentChapters);
+
+  StreamSubscription<Duration>? _positionSub;
+  DateTime _lastSavedAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _wireBookmarkPersistence() {
+    _positionSub = player.positionStream.listen((pos) {
+      final book = _currentBook;
+      if (book == null) return;
+      final now = DateTime.now();
+      if (now.difference(_lastSavedAt).inSeconds < 5) return;
+      _lastSavedAt = now;
+      final idx = player.currentIndex ?? 0;
+      PlaybackBookmarks.instance.save(
+        book.id,
+        Bookmark(chapterIndex: idx, position: pos),
+      );
+    });
+  }
 
   Future<void> loadBook({
     required Book book,
     required List<AudioFile> chapters,
-    int startIndex = 0,
+    int? startIndex,
+    Duration? startPosition,
   }) async {
     _currentBook = book;
+    _currentChapters = List.of(chapters);
+
+    final saved = (startIndex == null && startPosition == null)
+        ? await PlaybackBookmarks.instance.load(book.id)
+        : null;
+
+    final effectiveIndex = startIndex ?? saved?.chapterIndex ?? 0;
+    final effectivePosition = startPosition ?? saved?.position ?? Duration.zero;
+    final clampedIndex =
+        effectiveIndex.clamp(0, chapters.isEmpty ? 0 : chapters.length - 1);
 
     final sources = <AudioSource>[
-      for (final chapter in chapters)
+      for (var i = 0; i < chapters.length; i++)
         AudioSource.uri(
-          Uri.parse(chapter.url!),
+          Uri.parse(chapters[i].url!),
           tag: MediaItem(
-            id: '${book.id}-${chapter.track ?? chapters.indexOf(chapter)}',
+            id: '${book.id}-${chapters[i].track ?? i}',
             album: book.title,
-            title: chapter.title ?? chapter.name ?? 'Chapter',
+            title: chapters[i].title ?? chapters[i].name ?? 'Chapter ${i + 1}',
             artist: book.author ?? 'Unknown',
             artUri: Uri.parse(book.image),
-            duration: chapter.length != null
-                ? Duration(milliseconds: (chapter.length! * 1000).round())
+            duration: chapters[i].length != null
+                ? Duration(milliseconds: (chapters[i].length! * 1000).round())
                 : null,
           ),
         ),
@@ -38,8 +75,8 @@ class AudiobookPlayer {
 
     await player.setAudioSources(
       sources,
-      initialIndex: startIndex,
-      initialPosition: Duration.zero,
+      initialIndex: clampedIndex,
+      initialPosition: effectivePosition,
     );
   }
 
@@ -48,7 +85,10 @@ class AudiobookPlayer {
     await player.play();
   }
 
-  Future<void> dispose() => player.dispose();
+  Future<void> dispose() async {
+    await _positionSub?.cancel();
+    await player.dispose();
+  }
 }
 
 Future<void> initAudioService() async {

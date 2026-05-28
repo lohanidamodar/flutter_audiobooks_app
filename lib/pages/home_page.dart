@@ -1,7 +1,9 @@
 import 'package:audiobooks/pages/book_details.dart';
+import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/notifiers/audio_books_notifier.dart';
 import 'package:audiobooks/widgets/book_grid_item.dart';
+import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -47,67 +49,84 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<AudioBooksNotifier>(
-        builder: (context, notifier, _) {
-          final showFullScreen = notifier.books.isEmpty &&
-              notifier.topBooks.isEmpty &&
-              notifier.status != LoadStatus.ready;
-          if (showFullScreen) {
-            return CustomScrollView(
-              slivers: [
-                _appBar(),
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _FullScreenState(notifier: notifier),
-                ),
-              ],
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: notifier.refresh,
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                _appBar(),
-                if (notifier.topBooks.isNotEmpty) ...[
-                  _SectionTitle(title: 'Most downloaded'),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.78,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => BookGridItem(
-                          book: notifier.topBooks[index],
-                          onTap: () => _openDetail(notifier.topBooks[index]),
-                        ),
-                        childCount: notifier.topBooks.length,
-                      ),
+      body: Stack(
+        children: [
+          Consumer<AudioBooksNotifier>(
+            builder: (context, notifier, _) {
+              final showFullScreen = notifier.books.isEmpty &&
+                  notifier.topBooks.isEmpty &&
+                  notifier.status != LoadStatus.ready;
+              if (showFullScreen) {
+                return CustomScrollView(
+                  slivers: [
+                    _appBar(),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _FullScreenState(notifier: notifier),
                     ),
-                  ),
-                ],
-                _SectionTitle(title: 'Recent books'),
-                SliverList.builder(
-                  itemCount: notifier.books.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index >= notifier.books.length) {
-                      return _ListFooter(notifier: notifier);
-                    }
-                    return _BookListTile(
-                      book: notifier.books[index],
-                      onTap: () => _openDetail(notifier.books[index]),
-                    );
-                  },
+                  ],
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: notifier.refresh,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    _appBar(),
+                    if (notifier.topBooks.isNotEmpty) ...[
+                      _SectionTitle(title: 'Most downloaded'),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.78,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => BookGridItem(
+                              book: notifier.topBooks[index],
+                              onTap: () =>
+                                  _openDetail(notifier.topBooks[index]),
+                            ),
+                            childCount: notifier.topBooks.length,
+                          ),
+                        ),
+                      ),
+                    ],
+                    _SectionTitle(title: 'Recent books'),
+                    SliverList.builder(
+                      itemCount: notifier.books.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index >= notifier.books.length) {
+                          return _ListFooter(notifier: notifier);
+                        }
+                        return _BookListTile(
+                          book: notifier.books[index],
+                          onTap: () => _openDetail(notifier.books[index]),
+                        );
+                      },
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 88)),
+                  ],
                 ),
-              ],
+              );
+            },
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayer(
+              onTap: () {
+                final book = AudiobookPlayer.instance.currentBook;
+                if (book != null) _openDetail(book);
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
