@@ -1,11 +1,12 @@
+import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
-import 'package:audiobooks/widgets/player_service.dart';
-import 'package:audiobooks/widgets/title.dart';
+import 'package:audiobooks/theme/audiobook_theme.dart';
+import 'package:audiobooks/widgets/book_cards.dart';
+import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:background_downloader/background_downloader.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,8 +21,8 @@ class DetailPage extends ConsumerStatefulWidget {
 class _DetailPageState extends ConsumerState<DetailPage> {
   final Set<String> _downloading = {};
 
-  Future<void> _playChapter(List<AudioFile> chapters, int index,
-      {Duration position = Duration.zero}) async {
+  Future<void> _play(List<AudioFile> chapters, int index,
+      {Duration position = Duration.zero, bool openNowPlaying = false}) async {
     final controller = ref.read(audiobookPlayerProvider);
     if (controller.currentBook?.id != widget.book.id) {
       await controller.loadBook(
@@ -33,7 +34,12 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     } else {
       await controller.player.seek(position, index: index);
     }
-    await controller.player.play();
+    // Do NOT await play(): just_audio's play() future only completes when
+    // playback is later paused/stopped.
+    controller.player.play();
+    if (openNowPlaying && mounted) {
+      Navigator.of(context).push(NowPlayingPage.route());
+    }
   }
 
   Future<void> _clearBookmark() async {
@@ -43,7 +49,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
   Future<void> _downloadChapter(AudioFile chapter) async {
     if (chapter.url == null) return;
-    final id = '${widget.book.id}-${chapter.name}';
+    final id = DownloadsServiceTaskId(widget.book.id, chapter.name).value;
     if (_downloading.contains(id)) return;
     setState(() => _downloading.add(id));
 
@@ -60,7 +66,6 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
     final result = await FileDownloader().download(
       task,
-      onProgress: (_) {},
       onStatus: (status) {
         if (!mounted) return;
         if (status == TaskStatus.complete ||
@@ -73,20 +78,16 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    switch (result.status) {
-      case TaskStatus.complete:
-        messenger.showSnackBar(
-          SnackBar(content: Text('Downloaded ${task.filename}')),
-        );
-        break;
-      case TaskStatus.failed:
-      case TaskStatus.notFound:
-        messenger.showSnackBar(
-          SnackBar(content: Text('Failed to download ${task.filename}')),
-        );
-        break;
-      default:
-        break;
+    if (result.status == TaskStatus.complete) {
+      ref.invalidate(libraryProvider);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Downloaded ${task.filename}')),
+      );
+    } else if (result.status == TaskStatus.failed ||
+        result.status == TaskStatus.notFound) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to download ${task.filename}')),
+      );
     }
   }
 
@@ -95,120 +96,202 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     final theme = Theme.of(context);
     final chaptersAsync = ref.watch(chaptersProvider(widget.book));
     final bookmark = ref.watch(bookmarkProvider(widget.book.id)).value;
+    final coverColor =
+        ref.watch(coverColorProvider(widget.book.image)).value ??
+            theme.colorScheme.primary;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.book.title,
-            maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-      body: chaptersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _ErrorState(
-          onRetry: () => ref.invalidate(chaptersProvider(widget.book)),
-        ),
-        data: (chapters) => Stack(
-          children: [
-            ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 280),
-              children: [
-                _Header(book: widget.book),
-                const SizedBox(height: 16),
-                if (bookmark != null)
-                  _ResumeCard(
-                    bookmark: bookmark,
-                    chapters: chapters,
-                    onResume: () => _playChapter(
+      body: Stack(
+        children: [
+          chaptersAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => _ErrorState(
+              onRetry: () => ref.invalidate(chaptersProvider(widget.book)),
+            ),
+            data: (chapters) => CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _GradientHeader(
+                    book: widget.book,
+                    coverColor: coverColor,
+                    hasBookmark: bookmark != null,
+                    onPlay: () => _play(
                       chapters,
-                      bookmark.chapterIndex,
-                      position: bookmark.position,
+                      bookmark?.chapterIndex ?? 0,
+                      position: bookmark?.position ?? Duration.zero,
+                      openNowPlaying: true,
                     ),
-                    onClear: _clearBookmark,
                   ),
-                if (widget.book.description != null &&
-                    widget.book.description!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text('About', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  Text(widget.book.description!,
-                      style: theme.textTheme.bodyMedium),
-                ],
-                const SizedBox(height: 16),
-                Text('Chapters', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 4),
-                for (var i = 0; i < chapters.length; i++)
-                  _ChapterTile(
-                    index: i,
-                    chapter: chapters[i],
-                    isBookmarkChapter: bookmark?.chapterIndex == i,
-                    isDownloading: _downloading
-                        .contains('${widget.book.id}-${chapters[i].name}'),
-                    onPlay: () => _playChapter(chapters, i),
-                    onDownload: () => _downloadChapter(chapters[i]),
-                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                  sliver: SliverList.list(children: [
+                    if (bookmark != null) ...[
+                      _ResumeCard(
+                        bookmark: bookmark,
+                        chapters: chapters,
+                        onResume: () => _play(
+                          chapters,
+                          bookmark.chapterIndex,
+                          position: bookmark.position,
+                          openNowPlaying: true,
+                        ),
+                        onClear: _clearBookmark,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (widget.book.description?.isNotEmpty ?? false) ...[
+                      Text('About', style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 8),
+                      Text(widget.book.description!,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(height: 1.5)),
+                      const SizedBox(height: 20),
+                    ],
+                    Text('${chapters.length} chapters',
+                        style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    for (var i = 0; i < chapters.length; i++)
+                      _ChapterTile(
+                        index: i,
+                        chapter: chapters[i],
+                        isBookmarkChapter: bookmark?.chapterIndex == i,
+                        isDownloading: _downloading.contains(
+                            DownloadsServiceTaskId(
+                                    widget.book.id, chapters[i].name)
+                                .value),
+                        onPlay: () => _play(chapters, i),
+                        onDownload: () => _downloadChapter(chapters[i]),
+                      ),
+                  ]),
+                ),
               ],
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Material(
-                elevation: 4,
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: const PlayerService(),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black38,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayer(
+              safeAreaBottom: true,
+              onTap: (_) => Navigator.of(context).push(NowPlayingPage.route()),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Header extends StatelessWidget {
+/// Small helper so the taskId scheme lives in one place.
+class DownloadsServiceTaskId {
+  final String bookId;
+  final String? chapterName;
+  const DownloadsServiceTaskId(this.bookId, this.chapterName);
+  String get value => '$bookId-$chapterName';
+}
+
+class _GradientHeader extends StatelessWidget {
   final Book book;
-  const _Header({required this.book});
+  final Color coverColor;
+  final bool hasBookmark;
+  final VoidCallback onPlay;
+  const _GradientHeader({
+    required this.book,
+    required this.coverColor,
+    required this.hasBookmark,
+    required this.onPlay,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      height: 140,
-      child: Row(
-        children: [
-          Hero(
-            tag: '${book.id}_image',
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: book.image,
-                width: 140,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Container(
-                  width: 140,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: const Icon(Icons.menu_book, size: 48),
+    final bg = theme.scaffoldBackgroundColor;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.alphaBlend(coverColor.withValues(alpha: 0.5), bg),
+            bg,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: coverColor.withValues(alpha: 0.4),
+                        blurRadius: 40,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                  ),
+                  child: BookCover(book: book, size: 180, radius: 18),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BookTitle(book.title),
-                const SizedBox(height: 4),
-                Text(book.author ?? 'Unknown author',
-                    style: theme.textTheme.titleMedium),
-                const SizedBox(height: 6),
-                if (book.totalTime != null)
-                  Text('Total time: ${book.totalTime}',
-                      style: theme.textTheme.bodySmall),
+              const SizedBox(height: 20),
+              Text(
+                book.title,
+                textAlign: TextAlign.center,
+                style: AudiobookTheme.display(context,
+                    fontSize: 24, fontWeight: FontWeight.w600, height: 1.15),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                book.author ?? 'Unknown author',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              if (book.totalTime != null) ...[
+                const SizedBox(height: 2),
+                Text('Total time ${book.totalTime}',
+                    style: theme.textTheme.bodySmall),
               ],
-            ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 200,
+                child: FilledButton.icon(
+                  onPressed: onPlay,
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text(hasBookmark ? 'Resume' : 'Play'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -229,12 +312,12 @@ class _ResumeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final chapterTitle =
-        bookmark.chapterIndex >= 0 && bookmark.chapterIndex < chapters.length
-            ? chapters[bookmark.chapterIndex].title ??
-                chapters[bookmark.chapterIndex].name ??
-                'Chapter ${bookmark.chapterIndex + 1}'
-            : 'Chapter ${bookmark.chapterIndex + 1}';
+    final title = bookmark.chapterIndex >= 0 &&
+            bookmark.chapterIndex < chapters.length
+        ? chapters[bookmark.chapterIndex].title ??
+            chapters[bookmark.chapterIndex].name ??
+            'Chapter ${bookmark.chapterIndex + 1}'
+        : 'Chapter ${bookmark.chapterIndex + 1}';
     return Card(
       margin: EdgeInsets.zero,
       color: theme.colorScheme.primaryContainer,
@@ -242,16 +325,17 @@ class _ResumeCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Row(
           children: [
-            Icon(Icons.play_circle_fill,
-                size: 32, color: theme.colorScheme.primary),
+            Icon(Icons.history,
+                size: 28, color: theme.colorScheme.onPrimaryContainer),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Resume listening', style: theme.textTheme.titleSmall),
+                  Text('Pick up where you left off',
+                      style: theme.textTheme.titleSmall),
                   Text(
-                    '$chapterTitle  ·  ${formatDuration(bookmark.position)}',
+                    '$title · ${formatDuration(bookmark.position)}',
                     style: theme.textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -261,7 +345,7 @@ class _ResumeCard extends StatelessWidget {
             ),
             FilledButton(onPressed: onResume, child: const Text('Resume')),
             IconButton(
-              tooltip: 'Clear bookmark',
+              tooltip: 'Clear',
               icon: const Icon(Icons.close),
               onPressed: onClear,
             ),
@@ -295,25 +379,27 @@ class _ChapterTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: IconButton(
-        icon: Icon(
-            isBookmarkChapter ? Icons.bookmark : Icons.play_circle_filled),
+        icon: Icon(isBookmarkChapter
+            ? Icons.bookmark
+            : Icons.play_circle_filled),
         color: isBookmarkChapter ? theme.colorScheme.primary : null,
         iconSize: 32,
         onPressed: onPlay,
       ),
-      title: Text(chapter.title ?? chapter.name ?? 'Chapter ${index + 1}'),
+      title: Text(chapter.title ?? chapter.name ?? 'Chapter ${index + 1}',
+          maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: chapter.length != null
           ? Text(formatChapterLength(chapter.length!))
           : null,
       trailing: isDownloading
           ? const SizedBox(
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : IconButton(
               tooltip: 'Download',
-              icon: const Icon(Icons.download),
+              icon: const Icon(Icons.download_outlined),
               onPressed: onDownload,
             ),
       onTap: onPlay,
@@ -331,7 +417,6 @@ class _ErrorState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.cloud_off, size: 64),

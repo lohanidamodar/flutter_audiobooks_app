@@ -28,6 +28,12 @@ class Repository {
     return books;
   }
 
+  Future<List<Book>> searchBooks(String query) async {
+    return sources[0].searchBooks(query);
+  }
+
+  Future<Book?> getCachedBook(String id) => DatabaseHelper().getBook(id);
+
   Future<List<AudioFile>> fetchAudioFiles(String? bookId) async {
     List<AudioFile> audiofiles;
     audiofiles = await caches[0].fetchAudioFiles(bookId);
@@ -43,6 +49,7 @@ class Repository {
 abstract class Source {
   Future<List<Book>> fetchBooks(int offset, int limit);
   Future<List<Book>> topBooks();
+  Future<List<Book>> searchBooks(String query);
   Future<List<AudioFile>> fetchAudioFiles(String? bookId);
 }
 

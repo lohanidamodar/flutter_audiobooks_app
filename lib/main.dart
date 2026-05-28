@@ -1,14 +1,14 @@
+import 'package:audiobooks/pages/main_shell.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'pages/home_page.dart';
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initAudioService();
+  await FileDownloader().trackTasks();
   FileDownloader().configureNotification(
     running: const TaskNotification('Downloading {filename}', '{progress}'),
     complete: const TaskNotification('Download complete', '{filename}'),
@@ -25,10 +25,11 @@ class AudioBooksApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Audiobooks',
-      theme: AudiobookTheme.light(),
+      theme: AudiobookTheme.dark(),
       darkTheme: AudiobookTheme.dark(),
-      themeMode: ThemeMode.system,
-      home: const HomePage(),
+      themeMode: ThemeMode.dark,
+      debugShowCheckedModeBanner: false,
+      home: const MainShell(),
     );
   }
 }

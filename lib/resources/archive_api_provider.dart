@@ -43,6 +43,18 @@ class ArchiveApiProvider implements Source{
     return Book.fromJsonArray(resJson['response']['docs']);
   }
 
+  @override
+  Future<List<Book>> searchBooks(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+    final q = Uri.encodeQueryComponent(
+        'title:($trimmed) AND collection:(librivoxaudio)');
+    final url =
+        'https://archive.org/advancedsearch.php?q=$q&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size&sort[]=downloads desc&rows=30&page=1&output=json';
+    final response = await client.get(Uri.parse(url));
+    Map resJson = json.decode(response.body);
+    return Book.fromJsonArray(resJson['response']['docs']);
+  }
 }
 
 final archiveApiProvider = ArchiveApiProvider();

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audiobooks/resources/downloads_service.dart';
 import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
@@ -7,19 +8,22 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 class AudiobookPlayer {
-  AudiobookPlayer({PlaybackBookmarks? bookmarks})
-      : _bookmarks = bookmarks ?? PlaybackBookmarks() {
+  AudiobookPlayer({
+    PlaybackBookmarks? bookmarks,
+    DownloadsService? downloads,
+  })  : _bookmarks = bookmarks ?? PlaybackBookmarks(),
+        _downloads = downloads ?? DownloadsService() {
     _wireBookmarkPersistence();
   }
 
   final AudioPlayer player = AudioPlayer();
   final PlaybackBookmarks _bookmarks;
+  final DownloadsService _downloads;
 
   Book? _currentBook;
   List<AudioFile> _currentChapters = const [];
   Book? get currentBook => _currentBook;
-  List<AudioFile> get currentChapters =>
-      List.unmodifiable(_currentChapters);
+  List<AudioFile> get currentChapters => List.unmodifiable(_currentChapters);
 
   StreamSubscription<Duration>? _positionSub;
   DateTime _lastSavedAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -32,10 +36,7 @@ class AudiobookPlayer {
       if (now.difference(_lastSavedAt).inSeconds < 5) return;
       _lastSavedAt = now;
       final idx = player.currentIndex ?? 0;
-      _bookmarks.save(
-        book.id,
-        Bookmark(chapterIndex: idx, position: pos),
-      );
+      _bookmarks.save(book.id, Bookmark(chapterIndex: idx, position: pos));
     });
   }
 
@@ -57,10 +58,13 @@ class AudiobookPlayer {
     final clampedIndex =
         effectiveIndex.clamp(0, chapters.isEmpty ? 0 : chapters.length - 1);
 
+    // Prefer locally downloaded files; fall back to streaming.
+    final localPaths = await _downloads.localPathsForBook(book.id);
+
     final sources = <AudioSource>[
       for (var i = 0; i < chapters.length; i++)
         AudioSource.uri(
-          Uri.parse(chapters[i].url!),
+          _resolveUri(chapters[i], localPaths),
           tag: MediaItem(
             id: '${book.id}-${chapters[i].track ?? i}',
             album: book.title,
@@ -79,6 +83,12 @@ class AudiobookPlayer {
       initialIndex: clampedIndex,
       initialPosition: effectivePosition,
     );
+  }
+
+  Uri _resolveUri(AudioFile chapter, Map<String, String> localPaths) {
+    final local = chapter.name != null ? localPaths[chapter.name] : null;
+    if (local != null) return Uri.file(local);
+    return Uri.parse(chapter.url!);
   }
 
   Future<void> playChapterAt(int index) async {
