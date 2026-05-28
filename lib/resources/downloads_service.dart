@@ -47,6 +47,29 @@ class DownloadsService {
     return result;
   }
 
+  /// Total size on disk of all completed downloads, in bytes.
+  Future<int> totalDownloadedBytes() async {
+    var total = 0;
+    for (final record in await _completed()) {
+      try {
+        final file = File(await record.task.filePath());
+        if (file.existsSync()) total += file.lengthSync();
+      } catch (_) {/* skip */}
+    }
+    return total;
+  }
+
+  /// Deletes every downloaded file and forgets all records.
+  Future<void> deleteAll() async {
+    for (final record in await FileDownloader().database.allRecords()) {
+      try {
+        final file = File(await record.task.filePath());
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {/* best-effort */}
+    }
+    await FileDownloader().database.deleteAllRecords();
+  }
+
   /// Deletes all downloaded files for a book and forgets their records.
   Future<void> deleteBook(String bookId) async {
     final dir = directoryFor(bookId);

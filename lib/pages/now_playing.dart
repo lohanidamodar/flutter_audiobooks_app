@@ -1,4 +1,7 @@
 import 'package:audiobooks/providers/providers.dart';
+import 'package:audiobooks/providers/sleep_timer_provider.dart';
+import 'package:audiobooks/resources/audio_helper.dart';
+import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:audiobooks/widgets/immersive_scrubber.dart';
 import 'package:flutter/material.dart';
@@ -335,16 +338,33 @@ class _BottomRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(audiobookPlayerProvider).player;
+    final controller = ref.watch(audiobookPlayerProvider);
     final speed = ref.watch(speedProvider).value ?? 1.0;
+    final sleepRemaining = ref.watch(sleepTimerProvider);
+    final sleepActive = sleepRemaining != null;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         TextButton.icon(
-          onPressed: () => _cycleSpeed(player, speed),
+          onPressed: () => _cycleSpeed(controller, speed),
           icon: const Icon(Icons.speed, color: Colors.white70, size: 20),
           label: Text('${_label(speed)}×',
               style: const TextStyle(color: Colors.white70)),
+        ),
+        TextButton.icon(
+          onPressed: () => _showSleepTimer(context, ref),
+          icon: Icon(Icons.bedtime_outlined,
+              color: sleepActive
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.white70,
+              size: 20),
+          label: Text(
+            sleepActive ? formatDuration(sleepRemaining) : 'Sleep',
+            style: TextStyle(
+                color: sleepActive
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white70),
+          ),
         ),
         TextButton.icon(
           onPressed: () => _showChapters(context, ref),
@@ -359,10 +379,59 @@ class _BottomRow extends ConsumerWidget {
   String _label(double s) =>
       s == s.roundToDouble() ? s.toStringAsFixed(1) : s.toString();
 
-  void _cycleSpeed(AudioPlayer player, double current) {
+  void _cycleSpeed(AudiobookPlayer controller, double current) {
     const options = [0.75, 1.0, 1.25, 1.5, 2.0];
     final idx = options.indexWhere((o) => (o - current).abs() < 0.01);
-    player.setSpeed(options[(idx + 1) % options.length]);
+    controller.setSpeed(options[(idx + 1) % options.length]);
+  }
+
+  void _showSleepTimer(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(sleepTimerProvider.notifier);
+    final active = ref.read(sleepTimerProvider) != null;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF161310),
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final minutes in const [15, 30, 45, 60])
+              ListTile(
+                leading: const Icon(Icons.timer_outlined, color: Colors.white70),
+                title: Text('$minutes minutes',
+                    style: const TextStyle(color: Colors.white)),
+                onTap: () {
+                  notifier.start(Duration(minutes: minutes));
+                  Navigator.of(context).pop();
+                },
+              ),
+            ListTile(
+              leading:
+                  const Icon(Icons.menu_book_outlined, color: Colors.white70),
+              title: const Text('End of chapter',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                notifier.startEndOfChapter();
+                Navigator.of(context).pop();
+              },
+            ),
+            if (active)
+              ListTile(
+                leading: Icon(Icons.cancel_outlined,
+                    color: Theme.of(context).colorScheme.error),
+                title: Text('Turn off',
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
+                onTap: () {
+                  notifier.cancel();
+                  Navigator.of(context).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showChapters(BuildContext context, WidgetRef ref) {

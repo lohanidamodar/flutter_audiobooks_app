@@ -46,11 +46,13 @@ class BookPosterCard extends StatelessWidget {
   final Book book;
   final double width;
   final VoidCallback onTap;
+  final bool showPlayBadge;
   const BookPosterCard({
     super.key,
     required this.book,
     required this.onTap,
     this.width = 140,
+    this.showPlayBadge = false,
   });
 
   @override
@@ -63,7 +65,31 @@ class BookPosterCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BookCover(book: book, size: width, radius: 16),
+            Stack(
+              children: [
+                BookCover(book: book, size: width, radius: 16),
+                if (showPlayBadge)
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Icon(Icons.play_arrow,
+                          size: 20, color: theme.colorScheme.onPrimary),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             Text(
               book.title,

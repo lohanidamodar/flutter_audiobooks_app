@@ -97,14 +97,16 @@ class RecentBooksNotifier extends AsyncNotifier<RecentBooks> {
   }
 }
 
-/// Chapters for a book — reuses the player's loaded list when it matches.
+/// Chapters for a book (keyed by id, auto-disposed). Reuses the player's
+/// loaded list when it matches; only returns playable (non-null url) chapters.
 final chaptersProvider =
-    FutureProvider.family<List<AudioFile>, Book>((ref, book) async {
+    FutureProvider.autoDispose.family<List<AudioFile>, String>((ref, bookId) async {
   final player = ref.read(audiobookPlayerProvider);
-  if (player.currentBook?.id == book.id && player.currentChapters.isNotEmpty) {
+  if (player.currentBook?.id == bookId && player.currentChapters.isNotEmpty) {
     return player.currentChapters;
   }
-  return ref.read(repositoryProvider).fetchAudioFiles(book.id);
+  final chapters = await ref.read(repositoryProvider).fetchAudioFiles(bookId);
+  return chapters.where((c) => c.url != null).toList();
 });
 
 /// Saved playback position for a book, if any. Auto-disposed so it re-reads

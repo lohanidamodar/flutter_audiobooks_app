@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/downloads_service.dart';
 import 'package:audiobooks/resources/models/audiofile.dart';
 import 'package:audiobooks/resources/models/book.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AudiobookPlayer {
   AudiobookPlayer({
@@ -26,18 +28,40 @@ class AudiobookPlayer {
   List<AudioFile> get currentChapters => List.unmodifiable(_currentChapters);
 
   StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<bool>? _playingSub;
   DateTime _lastSavedAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   void _wireBookmarkPersistence() {
-    _positionSub = player.positionStream.listen((pos) {
-      final book = _currentBook;
-      if (book == null) return;
-      final now = DateTime.now();
-      if (now.difference(_lastSavedAt).inSeconds < 5) return;
-      _lastSavedAt = now;
-      final idx = player.currentIndex ?? 0;
-      _bookmarks.save(book.id, Bookmark(chapterIndex: idx, position: pos));
+    _positionSub = player.positionStream.listen((_) {
+      if (_currentBook == null) return;
+      if (DateTime.now().difference(_lastSavedAt).inSeconds < 5) return;
+      _saveBookmark();
     });
+    // Persist immediately when paused/stopped so resume is accurate even if
+    // the 5s throttle hasn't fired.
+    _playingSub = player.playingStream.listen((playing) {
+      if (!playing) _saveBookmark();
+    });
+  }
+
+  void _saveBookmark() {
+    final book = _currentBook;
+    if (book == null) return;
+    _lastSavedAt = DateTime.now();
+    _bookmarks.save(
+      book.id,
+      Bookmark(
+        chapterIndex: player.currentIndex ?? 0,
+        position: player.position,
+      ),
+    );
+  }
+
+  /// Sets and remembers playback speed (restored on the next book load).
+  Future<void> setSpeed(double speed) async {
+    await player.setSpeed(speed);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(SettingsNotifier.speedKey, speed);
   }
 
   Future<void> loadBook({
@@ -83,6 +107,9 @@ class AudiobookPlayer {
       initialIndex: clampedIndex,
       initialPosition: effectivePosition,
     );
+
+    final prefs = await SharedPreferences.getInstance();
+    await player.setSpeed(prefs.getDouble(SettingsNotifier.speedKey) ?? 1.0);
   }
 
   Uri _resolveUri(AudioFile chapter, Map<String, String> localPaths) {
@@ -106,6 +133,7 @@ class AudiobookPlayer {
 
   Future<void> dispose() async {
     await _positionSub?.cancel();
+    await _playingSub?.cancel();
     await player.dispose();
   }
 }

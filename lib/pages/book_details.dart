@@ -20,6 +20,7 @@ class DetailPage extends ConsumerStatefulWidget {
 
 class _DetailPageState extends ConsumerState<DetailPage> {
   final Set<String> _downloading = {};
+  final Map<String, double> _progress = {};
   bool _bulkDownloading = false;
   int _bulkDone = 0;
   int _bulkTotal = 0;
@@ -68,20 +69,22 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
   Future<void> _play(List<AudioFile> chapters, int index,
       {Duration position = Duration.zero, bool openNowPlaying = false}) async {
+    if (chapters.isEmpty) return;
+    final safeIndex = index.clamp(0, chapters.length - 1);
     final controller = ref.read(audiobookPlayerProvider);
     if (controller.currentBook?.id != widget.book.id) {
       await controller.loadBook(
         book: widget.book,
         chapters: chapters,
-        startIndex: index,
+        startIndex: safeIndex,
         startPosition: position,
       );
     } else {
-      await controller.player.seek(position, index: index);
+      await controller.player.seek(position, index: safeIndex);
     }
     // Do NOT await play(): just_audio's play() future only completes when
-    // playback is later paused/stopped.
-    controller.player.play();
+    // playback is later paused/stopped. Guard against dead-link errors.
+    controller.player.play().catchError((_) {});
     if (openNowPlaying && mounted) {
       Navigator.of(context).push(NowPlayingPage.route());
     }
@@ -98,7 +101,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         filename: chapter.name ?? '${widget.book.id}.mp3',
         baseDirectory: BaseDirectory.applicationDocuments,
         directory: 'audiobooks/${widget.book.id}',
-        updates: Updates.status,
+        updates: Updates.statusAndProgress,
         allowPause: true,
         retries: 3,
       );
@@ -131,13 +134,19 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       batchProgressCallback: (succeeded, failed) {
         if (mounted) setState(() => _bulkDone = succeeded + failed);
       },
+      taskProgressCallback: (update) {
+        if (mounted) setState(() => _progress[update.task.taskId] = update.progress);
+      },
       taskStatusCallback: (update) {
         if (!mounted) return;
         final s = update.status;
         if (s == TaskStatus.complete ||
             s == TaskStatus.failed ||
             s == TaskStatus.canceled) {
-          setState(() => _downloading.remove(update.task.taskId));
+          setState(() {
+            _downloading.remove(update.task.taskId);
+            _progress.remove(update.task.taskId);
+          });
           // Reflect each finished chapter immediately, not only when the whole
           // batch completes.
           if (s == TaskStatus.complete) {
@@ -151,6 +160,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     setState(() {
       _bulkDownloading = false;
       _downloading.removeAll(tasks.map((t) => t.taskId));
+      _progress.clear();
     });
     _refreshDownloadState();
     final failed = batch.numFailed;
@@ -173,12 +183,18 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
     final result = await FileDownloader().download(
       task,
+      onProgress: (p) {
+        if (mounted) setState(() => _progress[id] = p);
+      },
       onStatus: (status) {
         if (!mounted) return;
         if (status == TaskStatus.complete ||
             status == TaskStatus.failed ||
             status == TaskStatus.canceled) {
-          setState(() => _downloading.remove(id));
+          setState(() {
+            _downloading.remove(id);
+            _progress.remove(id);
+          });
         }
       },
     );
@@ -201,7 +217,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final chaptersAsync = ref.watch(chaptersProvider(widget.book));
+    final chaptersAsync = ref.watch(chaptersProvider(widget.book.id));
     final bookmark = ref.watch(bookmarkProvider(widget.book.id)).value;
     final downloaded =
         ref.watch(downloadedChaptersProvider(widget.book.id)).value ??
@@ -216,7 +232,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
           chaptersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => _ErrorState(
-              onRetry: () => ref.invalidate(chaptersProvider(widget.book)),
+              onRetry: () => ref.invalidate(chaptersProvider(widget.book.id)),
             ),
             data: (chapters) => CustomScrollView(
               slivers: [
@@ -318,18 +334,21 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                     }),
                     const SizedBox(height: 4),
                     for (var i = 0; i < chapters.length; i++)
-                      _ChapterTile(
-                        index: i,
-                        chapter: chapters[i],
-                        isBookmarkChapter: bookmark?.chapterIndex == i,
-                        isDownloaded: downloaded.contains(chapters[i].name),
-                        isDownloading: _downloading.contains(
-                            DownloadsServiceTaskId(
-                                    widget.book.id, chapters[i].name)
-                                .value),
-                        onPlay: () => _play(chapters, i),
-                        onDownload: () => _downloadChapter(chapters[i]),
-                      ),
+                      Builder(builder: (context) {
+                        final taskId = DownloadsServiceTaskId(
+                                widget.book.id, chapters[i].name)
+                            .value;
+                        return _ChapterTile(
+                          index: i,
+                          chapter: chapters[i],
+                          isBookmarkChapter: bookmark?.chapterIndex == i,
+                          isDownloaded: downloaded.contains(chapters[i].name),
+                          isDownloading: _downloading.contains(taskId),
+                          progress: _progress[taskId],
+                          onPlay: () => _play(chapters, i),
+                          onDownload: () => _downloadChapter(chapters[i]),
+                        );
+                      }),
                   ]),
                 ),
               ],
@@ -529,6 +548,7 @@ class _ChapterTile extends StatelessWidget {
   final bool isBookmarkChapter;
   final bool isDownloaded;
   final bool isDownloading;
+  final double? progress;
   final VoidCallback onPlay;
   final VoidCallback onDownload;
 
@@ -538,6 +558,7 @@ class _ChapterTile extends StatelessWidget {
     required this.isBookmarkChapter,
     required this.isDownloaded,
     required this.isDownloading,
+    required this.progress,
     required this.onPlay,
     required this.onDownload,
   });
@@ -578,10 +599,26 @@ class _ChapterTile extends StatelessWidget {
 
   Widget _trailing(ThemeData theme) {
     if (isDownloading) {
-      return const SizedBox(
-        width: 22,
-        height: 22,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      final pct = progress;
+      return SizedBox(
+        width: 36,
+        height: 36,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: (pct != null && pct > 0 && pct < 1) ? pct : null,
+              ),
+            ),
+            if (pct != null && pct > 0)
+              Text('${(pct * 100).round()}',
+                  style: theme.textTheme.labelSmall),
+          ],
+        ),
       );
     }
     if (isDownloaded) {

@@ -103,17 +103,25 @@ class DatabaseHelper implements Cache {
     return null;
   }
 
-  Future<int> saveAudioFile(AudioFile audiofile) async {
-    var dbClient = await db;
-    int result = await dbClient.insert(audioFilesTable, audiofile.toMap());
-    return result;
+  Future<int?> saveAudioFile(AudioFile audiofile) async {
+    try {
+      var dbClient = await db;
+      return await dbClient.insert(
+        audioFilesTable,
+        audiofile.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+    return null;
   }
 
   @override
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
-    var res = await dbClient
-        .rawQuery('SELECT * FROM $bookTable LIMIT $offset,$limit');
+    var res = await dbClient.rawQuery(
+        'SELECT * FROM $bookTable ORDER BY rowid LIMIT $offset,$limit');
     return Book.fromDbArray(res);
   }
 

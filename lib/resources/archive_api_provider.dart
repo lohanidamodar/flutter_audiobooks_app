@@ -1,46 +1,72 @@
+import 'dart:convert';
+
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:http/http.dart' show Client;
-import 'dart:convert';
 
-const _metadata = "https://archive.org/metadata/";
-const _commonParams = "q=collection:(librivoxaudio)&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size";
+const _metadata = "https://archive.org/metadata";
+const _commonParams =
+    "q=collection:(librivoxaudio)&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size";
 
-const _latestBooksApi = "https://archive.org/advancedsearch.php?$_commonParams&sort[]=addeddate desc&output=json";
+const _latestBooksApi =
+    "https://archive.org/advancedsearch.php?$_commonParams&sort[]=addeddate desc&output=json";
 
-const _mostDownloaded = "https://archive.org/advancedsearch.php?$_commonParams&sort[]=downloads desc&rows=10&page=1&output=json";
-  const query="title:(secret tomb) AND collection:(librivoxaudio)";
+const _mostDownloaded =
+    "https://archive.org/advancedsearch.php?$_commonParams&sort[]=downloads desc&rows=10&page=1&output=json";
 
-class ArchiveApiProvider implements Source{
-
+class ArchiveApiProvider implements Source {
   Client client = Client();
+
+  Future<Map<String, dynamic>> _getJson(String url) async {
+    final response = await client.get(Uri.parse(url));
+    if (response.statusCode != 200) {
+      throw Exception('archive.org responded ${response.statusCode}');
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected response shape');
+    }
+    return decoded;
+  }
+
+  List<Book> _docsToBooks(Map<String, dynamic> json) {
+    final docs = (json['response'] as Map?)?['docs'];
+    if (docs is! List) return [];
+    return Book.fromJsonArray(docs);
+  }
 
   @override
   Future<List<Book>> fetchBooks(int offset, int limit) async {
-    final response = await client.get(Uri.parse("$_latestBooksApi&rows=$limit&page=${offset/limit + 1}"));
-    Map resJson = json.decode(response.body);
-    return Book.fromJsonArray(resJson['response']['docs']);
+    final page = (offset ~/ limit) + 1;
+    final json =
+        await _getJson("$_latestBooksApi&rows=$limit&page=$page");
+    return _docsToBooks(json);
   }
 
   @override
   Future<List<AudioFile>> fetchAudioFiles(String? bookId) async {
-    final response = await client.get(Uri.parse("$_metadata/$bookId/files"));
-    Map resJson = json.decode(response.body);
-    List<AudioFile> afiles = [];
-    resJson["result"].forEach((item) {
-      if(item["source"] == "original" &&item["track"] != null) {
-        item["book_id"] = bookId;
-          afiles.add(AudioFile.fromJson(item));
+    if (bookId == null) return [];
+    final json = await _getJson("$_metadata/$bookId/files");
+    final result = json['result'];
+    if (result is! List) return [];
+    final afiles = <AudioFile>[];
+    for (final item in result) {
+      if (item is! Map) continue;
+      if (item["source"] == "original" && item["track"] != null) {
+        final map = Map<String, dynamic>.from(item)..["book_id"] = bookId;
+        try {
+          afiles.add(AudioFile.fromJson(map));
+        } catch (_) {
+          // skip malformed entries
+        }
       }
-    });
+    }
     return afiles;
   }
 
   @override
   Future<List<Book>> topBooks() async {
-    final response = await client.get(Uri.parse(_mostDownloaded));
-    Map resJson = json.decode(response.body);
-    return Book.fromJsonArray(resJson['response']['docs']);
+    return _docsToBooks(await _getJson(_mostDownloaded));
   }
 
   @override
@@ -51,9 +77,7 @@ class ArchiveApiProvider implements Source{
         'title:($trimmed) AND collection:(librivoxaudio)');
     final url =
         'https://archive.org/advancedsearch.php?q=$q&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size&sort[]=downloads desc&rows=30&page=1&output=json';
-    final response = await client.get(Uri.parse(url));
-    Map resJson = json.decode(response.body);
-    return Book.fromJsonArray(resJson['response']['docs']);
+    return _docsToBooks(await _getJson(url));
   }
 }
 

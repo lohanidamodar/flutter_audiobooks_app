@@ -1,4 +1,5 @@
 import 'package:audiobooks/pages/book_details.dart';
+import 'package:audiobooks/pages/settings_page.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/widgets/book_cards.dart';
@@ -46,7 +47,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(topBooksProvider);
     ref.invalidate(recentBooksProvider);
     ref.invalidate(libraryProvider);
-    await ref.read(recentBooksProvider.future);
+    try {
+      await ref.read(recentBooksProvider.future);
+    } catch (_) {
+      // surfaced via the provider's error state; don't reject the indicator
+    }
   }
 
   @override
@@ -80,7 +85,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 slivers: [
                   _appBar(),
                   if (continueBooks.isNotEmpty)
-                    _rail('Continue listening', continueBooks),
+                    _rail('Continue listening', continueBooks,
+                        showPlayBadge: true),
                   if (topBooks.isNotEmpty) _rail('Most downloaded', topBooks),
                   const SliverToBoxAdapter(
                     child: SectionHeader(title: 'Recently added'),
@@ -115,9 +121,18 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _appBar() => SliverAppBar.large(
         title: const Text('Audiobooks'),
         floating: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
+          ),
+        ],
       );
 
-  Widget _rail(String title, List<Book> books) {
+  Widget _rail(String title, List<Book> books, {bool showPlayBadge = false}) {
     return SliverToBoxAdapter(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,6 +148,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               itemBuilder: (context, index) => BookPosterCard(
                 book: books[index],
                 width: 140,
+                showPlayBadge: showPlayBadge,
                 onTap: () => _openDetail(books[index]),
               ),
             ),
