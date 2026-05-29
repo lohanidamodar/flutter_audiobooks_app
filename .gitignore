@@ -93,10 +93,25 @@ android/.kotlin/
 .env.android
 .env.*.local
 
-# Fastlane
-fastlane/play-store-key.json
-fastlane/*.json
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots
-fastlane/test_output
+# Fastlane (per platform: android/fastlane, ios/fastlane)
+# Service-account / API keys must never be committed (public repo).
+**/fastlane/play-store-key.json
+**/fastlane/*.json
+**/fastlane/*.p8
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/test_output
+.env.android.codemagic
+.env.ios
+.env.ios.codemagic
+android/key.properties
+android/app/**/*.jks
+android/app/**/*.keystore
+android/vendor/bundle
+android/.bundle/
+ios/vendor/bundle
+ios/.bundle/
+android/fastlane/report.xml
+android/fastlane/README.md
+ios/fastlane/report.xml
+ios/fastlane/README.md

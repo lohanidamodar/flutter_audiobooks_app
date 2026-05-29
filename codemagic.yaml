@@ -1,0 +1,276 @@
+# =============================================================
+# codemagic.yaml — Flutter CI/CD Configuration
+# =============================================================
+# This file defines the Codemagic build pipelines.
+# iOS workflows use Fastlane for signing + deployment via App Store.
+# Android workflows use Fastlane for signing + deployment via Google Play.
+# Triggers are intentionally omitted so builds are MANUAL ONLY.
+#
+# All project-specific values come from environment variables.
+# Required variable groups (configure in Codemagic UI):
+#   ios_credentials       — iOS signing and upload credentials
+#   android_credentials   — Android signing and upload credentials
+#   common                — Shared variables such as NOTIFICATION_EMAIL
+# =============================================================
+
+workflows:
+  # -----------------------------------------------------------
+  # iOS — TestFlight (beta)
+  # -----------------------------------------------------------
+  ios-testflight:
+    name: iOS TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        # Create a variable group named "ios_credentials" in the
+        # Codemagic UI (Settings > Environment variables) containing:
+        #
+        #   APP_STORE_CONNECT_KEY_ID       — Key ID from App Store Connect API key
+        #   APP_STORE_CONNECT_ISSUER_ID    — Issuer ID from App Store Connect
+        #   APP_STORE_CONNECT_KEY_CONTENT  — Base64-encoded .p8 private key content
+        #   MATCH_GIT_URL                  — SSH URL of the private match certificates repo
+        #   MATCH_PASSWORD                 — Passphrase used to encrypt/decrypt match repo
+        #   APPLE_ID                       — Apple Developer account email
+        #   TEAM_ID                        — Apple Developer Team ID (10 chars)
+        #   ITC_TEAM_ID                    — App Store Connect Team ID (numeric)
+        #   APP_IDENTIFIER                 — iOS bundle ID (e.g. com.example.app)
+        #   APP_NAME                       — (optional) Output IPA name (default: Runner)
+        #   NOTIFICATION_EMAIL             — Email address for build notifications
+        - ios_credentials
+        - common
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    # NO triggers section — builds are manual only
+
+    scripts:
+      # 1. Install Flutter dependencies
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+
+      # 2. Run Flutter tests
+      - name: Run tests
+        script: |
+          flutter test
+
+      # 3. Build Flutter iOS project (generates the Xcode workspace)
+      - name: Build Flutter iOS
+        script: |
+          flutter build ios --release --no-codesign
+
+      # 4. Install Ruby dependencies (Fastlane)
+      - name: Install Fastlane
+        script: |
+          cd ios
+          bundle install
+
+      # 5. Run Fastlane beta lane (match signing + TestFlight upload)
+      - name: Run Fastlane beta
+        script: |
+          cd ios
+          bundle exec fastlane beta
+
+    artifacts:
+      - build/ios/*.ipa
+
+    publishing:
+      email:
+        recipients:
+          - $NOTIFICATION_EMAIL
+        notify:
+          success: true
+          failure: true
+
+  # -----------------------------------------------------------
+  # iOS — App Store Release
+  # -----------------------------------------------------------
+  ios-release:
+    name: iOS App Store Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - ios_credentials
+        - common
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    # NO triggers section — builds are manual only
+
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+
+      - name: Run tests
+        script: |
+          flutter test
+
+      - name: Build Flutter iOS
+        script: |
+          flutter build ios --release --no-codesign
+
+      - name: Install Fastlane
+        script: |
+          cd ios
+          bundle install
+
+      - name: Run Fastlane release
+        script: |
+          cd ios
+          bundle exec fastlane release
+
+    artifacts:
+      - build/ios/*.ipa
+
+    publishing:
+      email:
+        recipients:
+          - $NOTIFICATION_EMAIL
+        notify:
+          success: true
+          failure: true
+
+  # -----------------------------------------------------------
+  # Android — Internal Testing
+  # -----------------------------------------------------------
+  android-internal:
+    name: Android Internal Testing
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      groups:
+        # Create a variable group named "android_credentials" in the
+        # Codemagic UI (Settings > Environment variables) containing:
+        #
+        #   PLAY_STORE_JSON_KEY_DATA       — Base64-encoded service account JSON key
+        #   ANDROID_KEYSTORE_BASE64        — Base64-encoded release keystore file
+        #   ANDROID_KEYSTORE_PASSWORD      — Keystore password
+        #   ANDROID_KEY_ALIAS              — Key alias within the keystore
+        #   ANDROID_KEY_PASSWORD           — Key password
+        #   APP_IDENTIFIER                 — Android package name (applicationId)
+        #   NOTIFICATION_EMAIL             — Email address for build notifications
+        - android_credentials
+        - common
+      flutter: stable
+      java: 17
+
+    # NO triggers section — builds are manual only
+
+    scripts:
+      # 1. Decode the keystore from base64
+      - name: Set up keystore
+        script: |
+          mkdir -p $CM_BUILD_DIR/android/app/keystore
+          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > $CM_BUILD_DIR/android/app/keystore/upload-keystore.jks
+          printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=%s\n" \
+            "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" \
+            "keystore/upload-keystore.jks" > $CM_BUILD_DIR/android/key.properties
+
+      # 2. Install Flutter dependencies
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+
+      # 3. Run Flutter tests
+      - name: Run tests
+        script: |
+          flutter test
+
+      # 4. Install Ruby dependencies (Fastlane)
+      - name: Install Fastlane
+        script: |
+          cd android
+          bundle install
+
+      # 5. Decode Play Store JSON key
+      - name: Set up Play Store credentials
+        script: |
+          echo $PLAY_STORE_JSON_KEY_DATA | base64 --decode > /tmp/play_store_key.json
+          export PLAY_STORE_JSON_KEY_PATH=/tmp/play_store_key.json
+
+      # 6. Run Fastlane internal lane
+      - name: Run Fastlane internal
+        script: |
+          export PLAY_STORE_JSON_KEY_PATH=/tmp/play_store_key.json
+          cd android
+          bundle exec fastlane internal
+
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+
+    publishing:
+      email:
+        recipients:
+          - $NOTIFICATION_EMAIL
+        notify:
+          success: true
+          failure: true
+
+  # -----------------------------------------------------------
+  # Android — Production Release
+  # -----------------------------------------------------------
+  android-release:
+    name: Android Production Release
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      groups:
+        - android_credentials
+        - common
+      flutter: stable
+      java: 17
+
+    # NO triggers section — builds are manual only
+
+    scripts:
+      - name: Set up keystore
+        script: |
+          mkdir -p $CM_BUILD_DIR/android/app/keystore
+          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > $CM_BUILD_DIR/android/app/keystore/upload-keystore.jks
+          printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=%s\n" \
+            "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" \
+            "keystore/upload-keystore.jks" > $CM_BUILD_DIR/android/key.properties
+
+      - name: Install Flutter dependencies
+        script: |
+          flutter pub get
+
+      - name: Run tests
+        script: |
+          flutter test
+
+      - name: Install Fastlane
+        script: |
+          cd android
+          bundle install
+
+      - name: Set up Play Store credentials
+        script: |
+          echo $PLAY_STORE_JSON_KEY_DATA | base64 --decode > /tmp/play_store_key.json
+          export PLAY_STORE_JSON_KEY_PATH=/tmp/play_store_key.json
+
+      - name: Run Fastlane release
+        script: |
+          export PLAY_STORE_JSON_KEY_PATH=/tmp/play_store_key.json
+          cd android
+          bundle exec fastlane release
+
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+
+    publishing:
+      email:
+        recipients:
+          - $NOTIFICATION_EMAIL
+        notify:
+          success: true
+          failure: true
