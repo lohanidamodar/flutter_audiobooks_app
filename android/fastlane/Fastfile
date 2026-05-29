@@ -1,0 +1,595 @@
+# ---------------------------------------------------------------
+# Fastfile — Android build & deployment lanes
+# ---------------------------------------------------------------
+# This file is designed to be project-agnostic. All project-specific
+# values (package name) are read from environment variables so the
+# same file can be dropped into any Flutter project.
+#
+# Required env vars:
+#   APP_IDENTIFIER              — Android application ID (package name)
+#
+# And one of:
+#   PLAY_STORE_JSON_KEY_PATH    — Path to service account JSON key
+#   PLAY_STORE_JSON_KEY_DATA    — Base64-encoded service account JSON
+# ---------------------------------------------------------------
+
+default_platform(:android)
+
+def android_package_name
+  value = ENV["APP_IDENTIFIER"]
+  UI.user_error!("APP_IDENTIFIER env var must be set (Android applicationId)") if value.nil? || value.empty?
+  value
+end
+
+platform :android do
+  # ------------------------------------------------------------------
+  # Helper: Resolve the Play Store JSON key
+  # ------------------------------------------------------------------
+  desc "Resolve the Google Play service account JSON key"
+  private_lane :resolve_play_store_key do
+    key_path = ENV["PLAY_STORE_JSON_KEY_PATH"]
+    key_data = ENV["PLAY_STORE_JSON_KEY_DATA"]
+
+    if key_path && !key_path.empty? && File.exist?(key_path)
+      UI.message("Using Play Store JSON key from PLAY_STORE_JSON_KEY_PATH: #{key_path}")
+      key_path
+    elsif key_data && !key_data.empty?
+      # Decode base64 data to a temp file
+      require "tempfile"
+      require "base64"
+      tmp = Tempfile.new(["play_store_key", ".json"])
+      tmp.write(Base64.decode64(key_data))
+      tmp.close
+      UI.message("Decoded Play Store JSON key from PLAY_STORE_JSON_KEY_DATA to #{tmp.path}")
+      tmp.path
+    else
+      UI.user_error!(
+        "Neither PLAY_STORE_JSON_KEY_PATH nor PLAY_STORE_JSON_KEY_DATA is set. " \
+        "Provide one of them to authenticate with Google Play."
+      )
+    end
+  end
+
+  # ------------------------------------------------------------------
+  # Build: Build AAB only (no upload)
+  # ------------------------------------------------------------------
+  # Set SKIP_FLUTTER_BUILD=1 to reuse an already-built AAB at
+  # build/app/outputs/bundle/release/app-release.aab (e.g. when
+  # android_publish.sh was given an explicit aab path).
+  # ------------------------------------------------------------------
+  desc "Build release AAB only (no upload)"
+  lane :build do
+    expected_aab = File.expand_path("../../build/app/outputs/bundle/release/app-release.aab", __dir__)
+
+    if ENV["SKIP_FLUTTER_BUILD"] == "1"
+      UI.user_error!("SKIP_FLUTTER_BUILD=1 but no AAB found at #{expected_aab}") unless File.exist?(expected_aab)
+      UI.message("SKIP_FLUTTER_BUILD=1 — reusing existing AAB at #{expected_aab}")
+    else
+      sh("cd ../.. && flutter build appbundle --release")
+      UI.success("AAB built successfully at #{expected_aab}")
+    end
+  end
+
+  # ------------------------------------------------------------------
+  # Resolve the release_status to pass to the `supply` upload action.
+  # Defaults to "completed", but Google Play rejects that for apps that
+  # have never passed first review ("draft apps") with the error:
+  #   "Only releases with status draft may be created on draft app."
+  # Set SUPPLY_RELEASE_STATUS=draft for a first-time release; after
+  # Google finishes the first review the restriction is lifted and you
+  # can drop the env var.
+  # Valid values: completed, draft, halted, inProgress
+  # ------------------------------------------------------------------
+  def supply_release_status
+    value = (ENV["SUPPLY_RELEASE_STATUS"] || "completed").strip
+    allowed = %w[completed draft halted inProgress]
+    unless allowed.include?(value)
+      UI.user_error!("SUPPLY_RELEASE_STATUS=#{value} is invalid — must be one of: #{allowed.join(', ')}")
+    end
+    value
+  end
+
+  # ------------------------------------------------------------------
+  # Internal: Build AAB + upload to Google Play internal testing
+  # ------------------------------------------------------------------
+  desc "Build and upload to Google Play internal testing track"
+  lane :internal do
+    build
+
+    key_file = resolve_play_store_key
+
+    supply(
+      track: "internal",
+      release_status: supply_release_status,
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      json_key: key_file,
+      package_name: android_package_name,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Beta: Build AAB + upload to Google Play open testing (beta)
+  # ------------------------------------------------------------------
+  desc "Build and upload to Google Play beta (open testing) track"
+  lane :beta do
+    build
+
+    key_file = resolve_play_store_key
+
+    supply(
+      track: "beta",
+      release_status: supply_release_status,
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      json_key: key_file,
+      package_name: android_package_name,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Release: Build AAB + upload to Google Play production
+  # ------------------------------------------------------------------
+  desc "Build and upload to Google Play production track"
+  lane :release do
+    build
+
+    key_file = resolve_play_store_key
+
+    supply(
+      track: "production",
+      release_status: supply_release_status,
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      json_key: key_file,
+      package_name: android_package_name,
+      skip_upload_metadata: false,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Upload lanes — drive Supply::Client directly
+  # ------------------------------------------------------------------
+  # We bypass fastlane's `supply` upload action because its Uploader
+  # class crashes with `undefined method 'size' for nil:NilClass`
+  # (fastlane/fastlane#21530) on apps whose production track has no
+  # releases yet. Store listing text and images are app-level on
+  # Google Play — they aren't tied to a release — so driving the
+  # Publisher Edits API via Supply::Client lets us upload cleanly on
+  # brand-new apps AND on fully published ones.
+  #
+  # Three public lanes:
+  #   upload_metadata   — text fields only
+  #   upload_screenshots — images + screenshots only
+  #   upload_listing    — text + images + screenshots
+  # All three share the helpers below.
+  # ------------------------------------------------------------------
+
+  desc "Upload only text metadata (title, descriptions) to Play Store"
+  lane :upload_metadata do
+    play_store_listing_upload(upload_text: true, upload_images: false)
+  end
+
+  desc "Upload only screenshots + feature graphic / icon to Play Store"
+  lane :upload_screenshots do
+    play_store_listing_upload(upload_text: false, upload_images: true)
+  end
+
+  desc "Upload text metadata + images + screenshots to Play Store"
+  lane :upload_listing do
+    play_store_listing_upload(upload_text: true, upload_images: true)
+  end
+
+  # ------------------------------------------------------------------
+  # Shared upload helper
+  # ------------------------------------------------------------------
+  def play_store_listing_upload(upload_text:, upload_images:)
+    require "supply"
+    require "supply/client"
+
+    metadata_dir = File.expand_path("./metadata/android", __dir__)
+    UI.user_error!("metadata directory does not exist: #{metadata_dir}") unless Dir.exist?(metadata_dir)
+
+    locales = Dir.children(metadata_dir)
+                 .select { |d| File.directory?(File.join(metadata_dir, d)) }
+                 .reject { |d| d.start_with?(".") }
+    UI.user_error!("No locale directories under #{metadata_dir}") if locales.empty?
+
+    # changes_not_sent_for_review=true tells Google to commit the Edit to
+    # the Play Console dashboard WITHOUT attempting to submit it for review.
+    # This is the supported escape hatch for:
+    #   - draft apps (apps that have never passed first review), where any
+    #     auto-submit attempt trips "Only releases with status draft may be
+    #     created on draft app",
+    #   - published apps where the developer prefers to review and submit
+    #     changes manually through the Play Console UI before they go live.
+    # The developer can still manually click "Send for review" in the
+    # Play Console whenever they're ready. Opt out with
+    # SUPPLY_SUBMIT_FOR_REVIEW=1 if you want Google to auto-submit the edit
+    # (only works on already-published apps).
+    auto_submit_for_review = ENV["SUPPLY_SUBMIT_FOR_REVIEW"] == "1"
+
+    Supply.config = FastlaneCore::Configuration.create(
+      Supply::Options.available_options,
+      {
+        package_name: android_package_name,
+        json_key: resolve_play_store_key,
+        changes_not_sent_for_review: !auto_submit_for_review,
+      },
+    )
+
+    client = Supply::Client.make_from_config
+    client.begin_edit(package_name: android_package_name)
+
+    begin
+      UI.message("Uploading to Play Store (locales: #{locales.join(', ')})")
+      locales.each do |lang|
+        upload_text_for_locale(client, metadata_dir, lang)   if upload_text
+        upload_images_for_locale(client, metadata_dir, lang) if upload_images
+      end
+
+      commit_edit_with_draft_app_fallback(client, auto_submit_for_review: auto_submit_for_review)
+
+      if auto_submit_for_review
+        UI.success("Upload committed and submitted for review.")
+      else
+        UI.success("Upload committed. Open Play Console to review and send for review when ready.")
+      end
+    rescue => ex
+      safely_abort_edit(client)
+      explain_play_store_commit_error(ex)
+      raise
+    end
+  end
+
+  # Commit the edit. On draft apps (never past first review), Google rejects
+  # the commit because the inherited release state includes non-draft
+  # releases. Catch that specific error, rewrite the inherited non-draft
+  # releases to draft within the same edit (leaving live release state
+  # untouched since changes_not_sent_for_review=true keeps everything
+  # pending), and retry. Published apps take the fast path on the first
+  # attempt without ever touching track state.
+  def commit_edit_with_draft_app_fallback(client, auto_submit_for_review:)
+    if auto_submit_for_review
+      UI.message("Committing edit and submitting for review...")
+    else
+      UI.message("Committing edit (staged for manual review)...")
+    end
+
+    begin
+      client.commit_current_edit!
+    rescue => ex
+      raise ex unless ex.message.to_s.include?("Only releases with status draft may be created on draft app")
+      raise ex if auto_submit_for_review  # can't use this workaround if submitting for review
+
+      UI.important("Draft app detected — rewriting inherited non-draft releases to 'draft' status within this edit.")
+      UI.important("Live testers are NOT affected: changes_not_sent_for_review=true keeps everything pending until you click 'Send for review' in Play Console.")
+
+      downgraded_any = rewrite_inherited_releases_to_draft!(client)
+      unless downgraded_any
+        UI.error("No non-draft inherited releases found to rewrite — the draft-app error is coming from somewhere else.")
+        raise ex
+      end
+
+      UI.message("Retrying commit after downgrade...")
+      client.begin_edit(package_name: android_package_name) if client.current_edit.nil?
+      client.commit_current_edit!
+    end
+  end
+
+  # Walk every track, find releases whose status isn't already "draft",
+  # flip them to draft, and PUT the track back via update_track. Returns
+  # true if any track was modified.
+  def rewrite_inherited_releases_to_draft!(client)
+    modified = false
+    tracks = client.tracks
+    tracks.each do |track|
+      next if track.releases.nil? || track.releases.empty?
+      needs_update = track.releases.any? { |r| r.status.to_s != "draft" }
+      next unless needs_update
+
+      track.releases.each do |release|
+        next if release.status.to_s == "draft"
+        UI.important("  #{track.track}: #{release.name || '(no name)'} → draft  (was: #{release.status})")
+        release.status = "draft"
+      end
+
+      client.update_track(track.track, track)
+      modified = true
+    end
+    modified
+  end
+
+  # Translate the common opaque Google Play API errors into something the
+  # user can act on without going to the GitHub issues tracker first.
+  def explain_play_store_commit_error(ex)
+    message = ex.message.to_s
+
+    if message.include?("Only releases with status draft may be created on draft app")
+      UI.error("Upload failed: this app is still in \"draft\" state on Google Play.")
+      UI.important(<<~MSG.strip)
+        When an app has never had a production release submitted for review,
+        Google Play treats it as a draft app and rejects any Edit whose
+        inherited release state is not also \"draft\". Any internal/beta release
+        you uploaded directly through the Play Console or a prior `fastlane
+        internal` run is now blocking this Edit.
+
+        Fix one of the following in the Play Console, then re-run the upload:
+
+          1. Complete the initial app setup checklist (Store presence →
+             Main store listing, plus any \"Set up your app\" tasks shown on
+             the Dashboard) and submit the first internal release for review.
+             Once Google finishes that first review, the draft-app restriction
+             is lifted permanently.
+
+          2. OR open Testing → Internal testing → Releases, find the current
+             release, and change its status to \"Draft\". Then re-run this lane.
+
+          3. OR promote the app straight to production with a real release
+             (`./scripts/android_publish.sh release`).
+
+        This is a Google Play Console restriction, not a fastlane bug.
+      MSG
+      return
+    end
+
+    if message.include?("The caller does not have permission")
+      UI.error("Upload failed: service account lacks store listing permissions.")
+      UI.important(<<~MSG.strip)
+        Go to Play Console → Users and permissions, open the service account
+        (`*@*.iam.gserviceaccount.com`), and grant this app the permission
+        \"Manage store presence\" (and \"Manage testing track releases\" if
+        you also want to upload AABs). Save, then wait ~5–10 minutes for
+        Google's permission cache to refresh before retrying.
+      MSG
+      return
+    end
+
+    UI.error("Upload failed: #{ex.message}")
+  end
+
+  # Upload title / short_description / full_description / video for one locale.
+  def upload_text_for_locale(client, metadata_dir, lang)
+    lang_dir = File.join(metadata_dir, lang)
+    fields = {
+      title:             read_metadata_field(lang_dir, "title"),
+      short_description: read_metadata_field(lang_dir, "short_description"),
+      full_description:  read_metadata_field(lang_dir, "full_description"),
+      video:             read_metadata_field(lang_dir, "video"),
+    }
+
+    if fields.values.all?(&:nil?)
+      UI.important("  #{lang}: no text fields to upload — skipping")
+      return
+    end
+
+    client.update_listing_for_language(language: lang, **fields)
+    UI.success("  #{lang}: text ok")
+  end
+
+  # Upload feature graphic + icon + tv banner + all screenshot sets for one locale.
+  def upload_images_for_locale(client, metadata_dir, lang)
+    images_root = File.join(metadata_dir, lang, Supply::IMAGES_FOLDER_NAME)
+    return unless Dir.exist?(images_root)
+
+    # Single-file image types (featureGraphic, icon, tvBanner)
+    Supply::IMAGES_TYPES.each do |image_type|
+      image_path = Dir.glob(File.join(images_root, "#{image_type}.*")).first
+      next unless image_path
+
+      begin
+        client.upload_image(image_path: image_path, image_type: image_type, language: lang)
+        UI.success("  #{lang}/#{image_type}")
+      rescue => ex
+        UI.error("  #{lang}/#{image_type}: failed — #{ex.message}")
+      end
+    end
+
+    # Multi-file screenshot types (phone/7in/10in/tv/wear)
+    Supply::SCREENSHOT_TYPES.each do |image_type|
+      type_dir = File.join(images_root, image_type)
+      next unless Dir.exist?(type_dir)
+
+      files = Dir.glob(File.join(type_dir, "*.{png,jpg,jpeg}")).sort
+      next if files.empty?
+
+      begin
+        client.clear_screenshots(image_type: image_type, language: lang)
+        files.each { |f| client.upload_image(image_path: f, image_type: image_type, language: lang) }
+        UI.success("  #{lang}/#{image_type}: #{files.size}")
+      rescue => ex
+        UI.error("  #{lang}/#{image_type}: failed — #{ex.message}")
+      end
+    end
+  end
+
+  # Read one metadata .txt file, returning nil if the file is missing or
+  # blank (so the Publisher API receives nil for "unchanged field" semantics
+  # instead of blowing away the existing value with an empty string).
+  def read_metadata_field(lang_dir, field)
+    path = File.join(lang_dir, "#{field}.txt")
+    return nil unless File.file?(path)
+    content = File.read(path, encoding: "UTF-8")
+    content.strip.empty? ? nil : content
+  end
+
+  # Abort the current Edit without letting a cleanup failure mask the real
+  # upload error that triggered this call.
+  def safely_abort_edit(client)
+    client.abort_current_edit
+  rescue StandardError
+    nil
+  end
+
+  # ------------------------------------------------------------------
+  # Download: Fetch current metadata from Play Store
+  # ------------------------------------------------------------------
+  # Drives Supply::Client directly instead of Supply::Setup#perform_download
+  # for three reasons:
+  #
+  #   1. `perform_download` calls `client.latest_version` which crashes with
+  #      NoMethodError on apps that have no production release
+  #      (fastlane/fastlane#21529) — the `releases` array on internal/beta
+  #      tracks can contain nil entries and the upstream `reject` block
+  #      doesn't compact them first.
+  #
+  #   2. `perform_download` silently no-ops if `metadata_path` already exists.
+  #      We want a clean download every time, so we write into a tempdir and
+  #      atomically swap into place.
+  #
+  #   3. `perform_download` occasionally misses locales that exist in the
+  #      Play Console UI but haven't been touched via the Edit API. We merge
+  #      the API-discovered locales with locales found in the existing local
+  #      metadata dir and any listed in SUPPLY_DOWNLOAD_LANGUAGES.
+  #
+  # Existing local metadata is preserved as a timestamped .bak on each run.
+  # ------------------------------------------------------------------
+  desc "Download current metadata from Play Store"
+  lane :download_metadata do
+    require "supply"
+    require "supply/client"
+    require "fileutils"
+    require "tmpdir"
+
+    key_file     = resolve_play_store_key
+    metadata_dir = File.expand_path("./metadata/android", __dir__)
+
+    local_langs = if Dir.exist?(metadata_dir)
+      Dir.children(metadata_dir).select { |d| File.directory?(File.join(metadata_dir, d)) }
+    else
+      []
+    end
+    forced_langs = (ENV["SUPPLY_DOWNLOAD_LANGUAGES"] || "")
+                     .split(",").map(&:strip).reject(&:empty?)
+
+    Supply.config = FastlaneCore::Configuration.create(
+      Supply::Options.available_options,
+      {
+        package_name: android_package_name,
+        json_key: key_file,
+      },
+    )
+
+    client = Supply::Client.make_from_config
+    client.begin_edit(package_name: android_package_name)
+
+    Dir.mktmpdir("supply-download-") do |tmp|
+      tmp_metadata = File.join(tmp, "android")
+      FileUtils.mkdir_p(tmp_metadata)
+
+      begin
+        api_langs = client.listings.map(&:language)
+        all_langs = (api_langs + local_langs + forced_langs).uniq
+
+        if all_langs.empty?
+          UI.user_error!(
+            "No locales to download — Play Store returned none and no local/forced " \
+            "locales given. If you know a locale exists in the Console, pass it via " \
+            "SUPPLY_DOWNLOAD_LANGUAGES=en-US,ne-NP (etc)."
+          )
+        end
+
+        UI.message("Downloading listings for: #{all_langs.join(', ')}")
+
+        all_langs.each do |lang|
+          listing = client.listing_for_language(lang)
+
+          if Supply::AVAILABLE_METADATA_FIELDS.all? { |k| listing.send(k).to_s.strip.empty? }
+            UI.important("  #{lang}: no data on Play Store — skipping")
+            next
+          end
+
+          containing = File.join(tmp_metadata, lang)
+          FileUtils.mkdir_p(containing)
+          Supply::AVAILABLE_METADATA_FIELDS.each do |key|
+            path = File.join(containing, "#{key}.txt")
+            File.open(path, "w:UTF-8") { |f| f.write(listing.send(key).to_s) }
+          end
+          UI.success("  #{lang}")
+
+          # Download images + screenshots for this locale. Best-effort — any
+          # individual image_type that fails (no asset of that kind uploaded,
+          # transient HTTP error, etc.) is logged and skipped without aborting
+          # the whole lane. Set SUPPLY_SKIP_IMAGE_DOWNLOAD=1 to turn this off.
+          unless ENV["SUPPLY_SKIP_IMAGE_DOWNLOAD"] == "1"
+            require "net/http"
+            require "fastimage"
+
+            UI.message("    Checking images for #{lang}...")
+            image_download_total = 0
+            (Supply::IMAGES_TYPES + Supply::SCREENSHOT_TYPES).each do |image_type|
+              begin
+                urls = client.fetch_images(image_type: image_type, language: lang).map(&:url)
+                if urls.nil? || urls.empty?
+                  UI.message("      #{image_type}: none")
+                  next
+                end
+
+                is_single = Supply::IMAGES_TYPES.include?(image_type)
+                base_path = File.join(tmp_metadata, lang, Supply::IMAGES_FOLDER_NAME, image_type)
+
+                if is_single
+                  FileUtils.mkdir_p(File.dirname(base_path))
+                else
+                  FileUtils.mkdir_p(base_path)
+                end
+
+                urls.each_with_index do |url, idx|
+                  ext = FastImage.type(url) || "png"
+                  file_path = if is_single
+                                "#{base_path}.#{ext}"
+                              else
+                                File.join(base_path, "#{idx + 1}_#{lang}.#{ext}")
+                              end
+                  File.binwrite(file_path, Net::HTTP.get(URI.parse(url)))
+                end
+
+                image_download_total += urls.size
+                UI.success("      #{image_type}: #{urls.size}")
+              rescue => ex
+                UI.error("      #{image_type}: failed — #{ex.message}")
+              end
+            end
+            UI.message("    Images downloaded for #{lang}: #{image_download_total}")
+          end
+        end
+      ensure
+        client.abort_current_edit
+      end
+
+      unless Dir.exist?(tmp_metadata) && !Dir.empty?(tmp_metadata)
+        UI.user_error!("Downloaded no metadata into #{tmp_metadata}")
+      end
+
+      if Dir.exist?(metadata_dir)
+        backup = "#{metadata_dir}.bak.#{Time.now.to_i}"
+        FileUtils.mv(metadata_dir, backup)
+        UI.message("Backed up existing local metadata to #{backup}")
+      end
+
+      FileUtils.mkdir_p(File.dirname(metadata_dir))
+      FileUtils.mv(tmp_metadata, metadata_dir)
+      UI.success("Downloaded Play Store metadata to #{metadata_dir}")
+    end
+  end
+
+  # ------------------------------------------------------------------
+  # Screenshots: Frame raw integration-test screenshots with frameit
+  # ------------------------------------------------------------------
+  desc "Frame raw Android screenshots using frameit"
+  lane :screenshots do
+    frameit(
+      path: "./screenshots/raw",
+      output_suffix: "_framed",
+      white: true,
+    )
+  end
+end

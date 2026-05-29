@@ -87,3 +87,4 @@ ios/Flutter/flutter_export_environment.sh
 .t.png
 .tmp.png
 .u.xml
+android/.kotlin/

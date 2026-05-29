@@ -1,0 +1,9 @@
+# ---------------------------------------------------------------
+# Appfile — Android app metadata for Fastlane
+# ---------------------------------------------------------------
+# All project-specific values come from environment variables so
+# this file is portable across Flutter projects.
+# ---------------------------------------------------------------
+
+json_key_file(ENV["PLAY_STORE_JSON_KEY_PATH"] || "")
+package_name(ENV["APP_IDENTIFIER"])
