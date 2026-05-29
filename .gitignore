@@ -89,6 +89,10 @@ ios/Flutter/flutter_export_environment.sh
 .u.xml
 android/.kotlin/
 
+# Deployment env (contains keystore password + service-account path)
+.env.android
+.env.*.local
+
 # Fastlane
 fastlane/play-store-key.json
 fastlane/*.json

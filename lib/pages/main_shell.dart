@@ -3,6 +3,7 @@ import 'package:audiobooks/pages/library_page.dart';
 import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -32,15 +33,15 @@ class _MainShellState extends ConsumerState<MainShell> {
           NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
+                icon: Icon(PhosphorIcons.house),
+                selectedIcon: Icon(PhosphorIcons.houseFill),
                 label: 'Home',
               ),
               NavigationDestination(
-                icon: Icon(Icons.library_books_outlined),
-                selectedIcon: Icon(Icons.library_books),
+                icon: Icon(PhosphorIcons.books),
+                selectedIcon: Icon(PhosphorIcons.booksFill),
                 label: 'Library',
               ),
             ],

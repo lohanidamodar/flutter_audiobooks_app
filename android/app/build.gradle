@@ -41,8 +41,10 @@ android {
             release {
                 keyAlias = keystoreProperties["keyAlias"]
                 keyPassword = keystoreProperties["keyPassword"]
+                // storeFile is resolved relative to the android/ root, e.g.
+                // "keystore.jks" -> android/keystore.jks (gitignored).
                 storeFile = keystoreProperties["storeFile"]
-                    ? file(keystoreProperties["storeFile"])
+                    ? rootProject.file(keystoreProperties["storeFile"])
                     : null
                 storePassword = keystoreProperties["storePassword"]
             }

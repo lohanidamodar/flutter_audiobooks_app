@@ -38,6 +38,10 @@ dependencies:
   rxdart: ^0.28.0
   shared_preferences: ^2.3.2
   sqflite: ^2.4.0
+  url_launcher: ^6.3.2
+  share_plus: ^13.1.0
+  package_info_plus: ^10.1.0
+  flutter_phosphor_icons: ^0.0.1+6
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +61,8 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/icon.png
   fonts:
     - family: Aleo
       fonts:

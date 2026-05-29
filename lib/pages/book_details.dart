@@ -9,6 +9,7 @@ import 'package:audiobooks/widgets/book_cards.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DetailPage extends ConsumerStatefulWidget {
@@ -267,7 +268,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.download_done,
+                                  Icon(PhosphorIcons.checkCircle,
                                       size: 20,
                                       color: theme.colorScheme.primary),
                                   const SizedBox(width: 6),
@@ -282,15 +283,15 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                               TextButton.icon(
                                 onPressed: () =>
                                     _downloadAll(chapters, downloaded),
-                                icon: const Icon(
-                                    Icons.download_for_offline_outlined,
+                                icon: Icon(
+                                    PhosphorIcons.downloadSimple,
                                     size: 20),
                                 label: const Text('Download all'),
                               ),
                             if (anyDownloaded)
                               IconButton(
                                 tooltip: 'Remove all downloads',
-                                icon: const Icon(Icons.delete_outline),
+                                icon: Icon(PhosphorIcons.trashSimple),
                                 onPressed: _removeDownloads,
                               ),
                           ],
@@ -341,7 +342,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                     CircleAvatar(
                       backgroundColor: Colors.black38,
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: Icon(PhosphorIcons.arrowLeft, color: Colors.white),
                         tooltip: 'Back',
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
@@ -350,7 +351,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                       backgroundColor: Colors.black38,
                       child: IconButton(
                         icon: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          isFavorite ? PhosphorIcons.heartFill : PhosphorIcons.heart,
                           color: isFavorite
                               ? theme.colorScheme.primary
                               : Colors.white,
@@ -584,7 +585,7 @@ class _GradientHeader extends StatelessWidget {
                               fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(width: 2),
-                        Icon(Icons.chevron_right,
+                        Icon(PhosphorIcons.caretRight,
                             size: 18, color: theme.colorScheme.primary),
                       ],
                     ),
@@ -600,7 +601,7 @@ class _GradientHeader extends StatelessWidget {
                 width: 200,
                 child: FilledButton.icon(
                   onPressed: onPlay,
-                  icon: const Icon(Icons.play_arrow),
+                  icon: Icon(PhosphorIcons.play),
                   label: Text(hasBookmark ? 'Resume' : 'Play'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -643,7 +644,7 @@ class _ResumeCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Row(
           children: [
-            Icon(Icons.history,
+            Icon(PhosphorIcons.clockCounterClockwise,
                 size: 28, color: theme.colorScheme.onPrimaryContainer),
             const SizedBox(width: 12),
             Expanded(
@@ -664,7 +665,7 @@ class _ResumeCard extends StatelessWidget {
             FilledButton(onPressed: onResume, child: const Text('Resume')),
             IconButton(
               tooltip: 'Clear',
-              icon: const Icon(Icons.close),
+              icon: Icon(PhosphorIcons.x),
               onPressed: onClear,
             ),
           ],
@@ -704,8 +705,8 @@ class _ChapterTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: IconButton(
         icon: Icon(isBookmarkChapter
-            ? Icons.bookmark
-            : Icons.play_circle_filled),
+            ? PhosphorIcons.bookmarkSimpleFill
+            : PhosphorIcons.playCircleFill),
         color: isBookmarkChapter ? theme.colorScheme.primary : null,
         iconSize: 32,
         onPressed: onPlay,
@@ -717,7 +718,7 @@ class _ChapterTile extends StatelessWidget {
           if (chapter.length != null) Text(formatChapterLength(chapter.length!)),
           if (isDownloaded) ...[
             if (chapter.length != null) const SizedBox(width: 8),
-            Icon(Icons.download_done,
+            Icon(PhosphorIcons.checkCircle,
                 size: 14, color: theme.colorScheme.primary),
             const SizedBox(width: 2),
             Text('Saved',
@@ -758,13 +759,13 @@ class _ChapterTile extends StatelessWidget {
     if (isDownloaded) {
       return IconButton(
         tooltip: 'Remove download',
-        icon: Icon(Icons.delete_outline, color: theme.colorScheme.primary),
+        icon: Icon(PhosphorIcons.trashSimple, color: theme.colorScheme.primary),
         onPressed: onDelete,
       );
     }
     return IconButton(
       tooltip: 'Download',
-      icon: const Icon(Icons.download_outlined),
+      icon: Icon(PhosphorIcons.downloadSimple),
       onPressed: onDownload,
     );
   }
@@ -841,14 +842,14 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off, size: 64),
+            Icon(PhosphorIcons.cloudSlash, size: 64),
             const SizedBox(height: 16),
             Text('Could not load chapters',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
+              icon: Icon(PhosphorIcons.arrowsClockwise),
               label: const Text('Retry'),
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Rounded square cover with a graceful fallback.
@@ -35,7 +36,7 @@ class BookCover extends StatelessWidget {
           width: size,
           height: size,
           color: theme.colorScheme.surfaceContainerHighest,
-          child: Icon(Icons.menu_book,
+          child: Icon(PhosphorIcons.bookOpen,
               color: theme.colorScheme.primary, size: size * 0.3),
         ),
       ),
@@ -88,7 +89,7 @@ class BookPosterCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Icon(Icons.play_arrow,
+                      child: Icon(PhosphorIcons.play,
                           size: 20, color: theme.colorScheme.onPrimary),
                     ),
                   ),
@@ -144,7 +145,7 @@ class _FavoriteHeart extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Icon(
-            isFav ? Icons.favorite : Icons.favorite_border,
+            isFav ? PhosphorIcons.heartFill : PhosphorIcons.heart,
             size: 20,
             color: isFav ? theme.colorScheme.primary : Colors.white,
           ),
@@ -226,7 +227,7 @@ class BookListRow extends StatelessWidget {
                 ],
               ),
             ),
-            trailing ?? const Icon(Icons.chevron_right),
+            trailing ?? Icon(PhosphorIcons.caretRight),
           ],
         ),
       ),

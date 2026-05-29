@@ -2,6 +2,7 @@ import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -79,7 +80,7 @@ class MiniPlayer extends ConsumerWidget {
                   _PlayPauseButton(player: player, ref: ref),
                   IconButton(
                     iconSize: 24,
-                    icon: const Icon(Icons.close),
+                    icon: Icon(PhosphorIcons.x),
                     tooltip: 'Stop',
                     onPressed: () =>
                         ref.read(audiobookPlayerProvider).stop(),
@@ -128,7 +129,7 @@ class _Artwork extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         color: theme.colorScheme.primary.withValues(alpha: 0.14),
       ),
-      child: Icon(Icons.menu_book, color: theme.colorScheme.primary, size: 22),
+      child: Icon(PhosphorIcons.bookOpen, color: theme.colorScheme.primary, size: 22),
     );
     if (artUrl == null) return placeholder;
     return ClipRRect(
@@ -173,7 +174,7 @@ class _PlayPauseButton extends StatelessWidget {
     }
     return IconButton(
       iconSize: 30,
-      icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+      icon: Icon(playing ? PhosphorIcons.pause : PhosphorIcons.play),
       onPressed: playing ? player.pause : player.play,
     );
   }

@@ -3,6 +3,7 @@ import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/widgets/book_cards.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LibraryPage extends ConsumerWidget {
@@ -70,7 +71,7 @@ class LibraryPage extends ConsumerWidget {
               title: const Text('Library'),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.refresh),
+                  icon: Icon(PhosphorIcons.arrowsClockwise),
                   tooltip: 'Refresh',
                   onPressed: () =>
                       ref.read(libraryProvider.notifier).refresh(),
@@ -119,7 +120,7 @@ class LibraryPage extends ConsumerWidget {
                               _openAuthor(context, data.downloaded[i]),
                           trailing: IconButton(
                             tooltip: 'Remove download',
-                            icon: const Icon(Icons.delete_outline),
+                            icon: Icon(PhosphorIcons.trashSimple),
                             onPressed: () =>
                                 _removeDownload(context, ref, data.downloaded[i]),
                           ),
@@ -171,7 +172,7 @@ class LibraryPage extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.library_books_outlined,
+          Icon(PhosphorIcons.books,
               size: 64, color: theme.colorScheme.outline),
           const SizedBox(height: 16),
           Text(message,

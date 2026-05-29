@@ -6,6 +6,7 @@ import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:audiobooks/widgets/immersive_scrubber.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -121,7 +122,7 @@ class _TopBar extends StatelessWidget {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+          icon: Icon(PhosphorIcons.caretDown, color: Colors.white),
           iconSize: 30,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
@@ -148,7 +149,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),
+          icon: Icon(PhosphorIcons.stopCircle, color: Colors.white),
           iconSize: 28,
           tooltip: 'Stop',
           onPressed: onStop,
@@ -203,8 +204,8 @@ class _Cover extends StatelessWidget {
 
   Widget _coverFallback() => Container(
         color: Colors.white10,
-        child: const Center(
-          child: Icon(Icons.menu_book, color: Colors.white38, size: 64),
+        child: Center(
+          child: Icon(PhosphorIcons.bookOpen, color: Colors.white38, size: 64),
         ),
       );
 }
@@ -280,14 +281,14 @@ class _Transport extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _ghost(Icons.skip_previous, 'Previous chapter',
+        _ghost(PhosphorIcons.skipBack, 'Previous chapter',
             player.hasPrevious ? player.seekToPrevious : null),
-        _ghost(Icons.replay_10, 'Back 10 seconds',
+        _ghost(PhosphorIcons.arrowCounterClockwise, 'Back 10 seconds',
             () => player.seek(player.position - const Duration(seconds: 10))),
         _PlayButton(accent: accent, playing: playing, busy: busy, player: player),
-        _ghost(Icons.forward_30, 'Forward 30 seconds',
+        _ghost(PhosphorIcons.arrowClockwise, 'Forward 30 seconds',
             () => player.seek(player.position + const Duration(seconds: 30))),
-        _ghost(Icons.skip_next, 'Next chapter',
+        _ghost(PhosphorIcons.skipForward, 'Next chapter',
             player.hasNext ? player.seekToNext : null),
       ],
     );
@@ -339,7 +340,7 @@ class _PlayButton extends StatelessWidget {
                   strokeWidth: 3, color: Color(0xFF14110E)),
             )
           : IconButton(
-              icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+              icon: Icon(playing ? PhosphorIcons.pause : PhosphorIcons.play),
               iconSize: 40,
               color: const Color(0xFF14110E),
               tooltip: playing ? 'Pause' : 'Play',
@@ -363,13 +364,13 @@ class _BottomRow extends ConsumerWidget {
       children: [
         TextButton.icon(
           onPressed: () => _cycleSpeed(controller, speed),
-          icon: const Icon(Icons.speed, color: Colors.white70, size: 20),
+          icon: Icon(PhosphorIcons.gauge, color: Colors.white70, size: 20),
           label: Text('${_label(speed)}×',
               style: const TextStyle(color: Colors.white70)),
         ),
         TextButton.icon(
           onPressed: () => _showSleepTimer(context, ref),
-          icon: Icon(Icons.bedtime_outlined,
+          icon: Icon(PhosphorIcons.moon,
               color: sleepActive
                   ? Theme.of(context).colorScheme.primary
                   : Colors.white70,
@@ -384,7 +385,7 @@ class _BottomRow extends ConsumerWidget {
         ),
         TextButton.icon(
           onPressed: () => _showChapters(context, ref),
-          icon: const Icon(Icons.list, color: Colors.white70, size: 20),
+          icon: Icon(PhosphorIcons.listBullets, color: Colors.white70, size: 20),
           label: const Text('Chapters',
               style: TextStyle(color: Colors.white70)),
         ),
@@ -414,7 +415,7 @@ class _BottomRow extends ConsumerWidget {
           children: [
             for (final minutes in const [15, 30, 45, 60])
               ListTile(
-                leading: const Icon(Icons.timer_outlined, color: Colors.white70),
+                leading: Icon(PhosphorIcons.timer, color: Colors.white70),
                 title: Text('$minutes minutes',
                     style: const TextStyle(color: Colors.white)),
                 onTap: () {
@@ -424,7 +425,7 @@ class _BottomRow extends ConsumerWidget {
               ),
             ListTile(
               leading:
-                  const Icon(Icons.menu_book_outlined, color: Colors.white70),
+                  Icon(PhosphorIcons.bookOpen, color: Colors.white70),
               title: const Text('End of chapter',
                   style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -434,7 +435,7 @@ class _BottomRow extends ConsumerWidget {
             ),
             if (active)
               ListTile(
-                leading: Icon(Icons.cancel_outlined,
+                leading: Icon(PhosphorIcons.xCircle,
                     color: Theme.of(context).colorScheme.error),
                 title: Text('Turn off',
                     style:
@@ -467,7 +468,7 @@ class _BottomRow extends ConsumerWidget {
             final c = chapters[index];
             return ListTile(
               leading: Icon(
-                isCurrent ? Icons.equalizer : Icons.play_arrow,
+                isCurrent ? PhosphorIcons.equalizer : PhosphorIcons.play,
                 color: isCurrent
                     ? Theme.of(context).colorScheme.primary
                     : Colors.white54,

@@ -4,6 +4,7 @@ import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/widgets/book_cards.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -135,7 +136,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         actions: [
           _SearchAnchorButton(onOpen: _openDetail, onAuthor: _openAuthor),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: Icon(PhosphorIcons.gearSix),
             tooltip: 'Settings',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -183,7 +184,7 @@ class _SearchAnchorButton extends ConsumerWidget {
       isFullScreen: true,
       viewHintText: 'Search by title or author…',
       builder: (context, controller) => IconButton(
-        icon: const Icon(Icons.search),
+        icon: Icon(PhosphorIcons.magnifyingGlass),
         tooltip: 'Search',
         onPressed: controller.openView,
       ),
@@ -274,7 +275,7 @@ class _ListFooter extends StatelessWidget {
         child: Center(
           child: TextButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(PhosphorIcons.arrowsClockwise),
             label: const Text('Failed to load — retry'),
           ),
         ),
@@ -307,7 +308,7 @@ class _FullScreenState extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isLoading) return const Center(child: CircularProgressIndicator());
     final theme = Theme.of(context);
-    final icon = hasError ? Icons.cloud_off : Icons.menu_book_outlined;
+    final icon = hasError ? PhosphorIcons.cloudSlash : PhosphorIcons.bookOpen;
     final title = hasError ? 'Could not load books' : 'No books yet';
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -325,7 +326,7 @@ class _FullScreenState extends StatelessWidget {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(PhosphorIcons.arrowsClockwise),
             label: const Text('Retry'),
           ),
         ],

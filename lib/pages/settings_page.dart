@@ -1,7 +1,15 @@
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const _appId = 'com.popupbits.listora';
+const _playUrl = 'https://play.google.com/store/apps/details?id=$_appId';
+const _moreAppsUrl = 'https://popupbits.com/products';
 
 final _storageBytesProvider = FutureProvider.autoDispose<int>(
   (ref) => ref.watch(downloadsServiceProvider).totalDownloadedBytes(),
@@ -71,7 +79,7 @@ class SettingsPage extends ConsumerWidget {
           const Divider(),
           _sectionLabel(context, 'Storage'),
           ListTile(
-            leading: const Icon(Icons.sd_storage_outlined),
+            leading: Icon(PhosphorIcons.hardDrives),
             title: const Text('Downloaded audio'),
             subtitle: Text(storage.when(
               data: _formatBytes,
@@ -80,14 +88,83 @@ class SettingsPage extends ConsumerWidget {
             )),
           ),
           ListTile(
-            leading: Icon(Icons.delete_sweep_outlined,
+            leading: Icon(PhosphorIcons.trashSimple,
                 color: theme.colorScheme.error),
             title: Text('Remove all downloads',
                 style: TextStyle(color: theme.colorScheme.error)),
             onTap: () => _removeAll(context, ref),
           ),
+          const Divider(),
+          _sectionLabel(context, 'About & more'),
+          ListTile(
+            leading: Icon(PhosphorIcons.star),
+            title: const Text('Rate Listora'),
+            subtitle: const Text('Leave a review on Google Play'),
+            onTap: () => _open(context, _playUrl),
+          ),
+          ListTile(
+            leading: Icon(PhosphorIcons.squaresFour),
+            title: const Text('More apps from Popup Bits'),
+            onTap: () => _open(context, _moreAppsUrl),
+          ),
+          ListTile(
+            leading: Icon(PhosphorIcons.shareNetwork),
+            title: const Text('Share Listora'),
+            subtitle: const Text('Tell a friend about free audiobooks'),
+            onTap: _share,
+          ),
+          ListTile(
+            leading: Icon(PhosphorIcons.info),
+            title: const Text('About'),
+            subtitle: const Text('Version & open-source licenses'),
+            onTap: () => _showAbout(context),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+
+  Future<void> _open(BuildContext context, String url) async {
+    final ok = await launchUrl(Uri.parse(url),
+        mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Could not open link')));
+    }
+  }
+
+  Future<void> _share() async {
+    await SharePlus.instance.share(ShareParams(
+      text: 'Listen to thousands of free classic audiobooks with Listora — '
+          '$_playUrl',
+      subject: 'Listora — free audiobooks',
+    ));
+  }
+
+  Future<void> _showAbout(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    if (!context.mounted) return;
+    showAboutDialog(
+      context: context,
+      applicationName: 'Listora',
+      applicationVersion: 'Version ${info.version} (${info.buildNumber})',
+      applicationIcon: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset('assets/icon/icon.png', width: 56, height: 56),
+      ),
+      applicationLegalese:
+          '© 2026 Popup Bits Pvt. Ltd.\n\nAudiobooks are public domain, '
+          'provided by LibriVox volunteers via the Internet Archive. Listora '
+          'is an independent player and is not affiliated with LibriVox or the '
+          'Internet Archive.',
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          'Free classic audiobooks, beautifully read.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
     );
   }
 
