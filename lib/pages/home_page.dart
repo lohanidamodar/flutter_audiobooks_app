@@ -117,6 +117,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         return BookListRow(
                           book: recentBooks[index],
                           onTap: () => _openDetail(recentBooks[index]),
+                          onAuthorTap: () => _openAuthor(recentBooks[index]),
                         );
                       },
                     ),
@@ -160,6 +161,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 book: books[index],
                 width: 140,
                 showPlayBadge: showPlayBadge,
+                showFavorite: true,
                 onTap: () => _openDetail(books[index]),
               ),
             ),

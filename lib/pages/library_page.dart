@@ -14,6 +14,16 @@ class LibraryPage extends ConsumerWidget {
     );
   }
 
+  void _openAuthor(BuildContext context, Book book) {
+    final author = book.author;
+    if (author == null || author.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AuthorBooksPage(author: author, excludeId: ''),
+      ),
+    );
+  }
+
   Future<void> _removeDownload(
       BuildContext context, WidgetRef ref, Book book) async {
     final confirmed = await showDialog<bool>(
@@ -105,7 +115,8 @@ class LibraryPage extends ConsumerWidget {
                         itemCount: data.downloaded.length,
                         itemBuilder: (context, i) => BookListRow(
                           book: data.downloaded[i],
-                          subtitleOverride: data.downloaded[i].author,
+                          onAuthorTap: () =>
+                              _openAuthor(context, data.downloaded[i]),
                           trailing: IconButton(
                             tooltip: 'Remove download',
                             icon: const Icon(Icons.delete_outline),
@@ -143,6 +154,7 @@ class LibraryPage extends ConsumerWidget {
               itemBuilder: (context, i) => BookPosterCard(
                 book: books[i],
                 width: 140,
+                showFavorite: true,
                 onTap: () => _openDetail(context, books[i]),
               ),
             ),

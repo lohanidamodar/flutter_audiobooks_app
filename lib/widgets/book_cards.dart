@@ -1,6 +1,8 @@
+import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Rounded square cover with a graceful fallback.
 class BookCover extends StatelessWidget {
@@ -47,12 +49,14 @@ class BookPosterCard extends StatelessWidget {
   final double width;
   final VoidCallback onTap;
   final bool showPlayBadge;
+  final bool showFavorite;
   const BookPosterCard({
     super.key,
     required this.book,
     required this.onTap,
     this.width = 140,
     this.showPlayBadge = false,
+    this.showFavorite = false,
   });
 
   @override
@@ -88,6 +92,12 @@ class BookPosterCard extends StatelessWidget {
                           size: 20, color: theme.colorScheme.onPrimary),
                     ),
                   ),
+                if (showFavorite)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: _FavoriteHeart(book: book),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -106,6 +116,38 @@ class BookPosterCard extends StatelessWidget {
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small heart overlay that toggles a book's favourite state in place.
+class _FavoriteHeart extends ConsumerWidget {
+  final Book book;
+  const _FavoriteHeart({required this.book});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isFav = ref.watch(favoritesProvider).contains(book.id);
+    return Material(
+      color: Colors.black45,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () {
+          // Cache the book so Library can resolve it later, then toggle.
+          ref.read(repositoryProvider).cacheBook(book);
+          ref.read(favoritesProvider.notifier).toggle(book.id);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(
+            isFav ? Icons.favorite : Icons.favorite_border,
+            size: 20,
+            color: isFav ? theme.colorScheme.primary : Colors.white,
+          ),
         ),
       ),
     );
