@@ -32,6 +32,10 @@ class Repository {
     return sources[0].searchBooks(query);
   }
 
+  Future<List<Book>> booksByAuthor(String author) async {
+    return sources[0].booksByAuthor(author);
+  }
+
   Future<Book?> getCachedBook(String id) => DatabaseHelper().getBook(id);
 
   /// Resolves many cached books in one query (order preserved).
@@ -58,6 +62,7 @@ abstract class Source {
   Future<List<Book>> fetchBooks(int offset, int limit);
   Future<List<Book>> topBooks();
   Future<List<Book>> searchBooks(String query);
+  Future<List<Book>> booksByAuthor(String author);
   Future<List<AudioFile>> fetchAudioFiles(String? bookId);
 }
 

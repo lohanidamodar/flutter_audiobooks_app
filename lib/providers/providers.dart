@@ -1,5 +1,7 @@
+import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/downloads_service.dart';
+import 'package:audiobooks/resources/favorites_service.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
 import 'package:audiobooks/resources/repository.dart';
@@ -19,6 +21,41 @@ final bookmarksProvider =
 
 final downloadsServiceProvider =
     Provider<DownloadsService>((ref) => DownloadsService());
+
+final favoritesServiceProvider = Provider<FavoritesService>(
+    (ref) => FavoritesService(ref.watch(sharedPrefsProvider)));
+
+/// Ordered favourite book ids (newest first). Toggle via the notifier.
+final favoritesProvider =
+    NotifierProvider<FavoritesNotifier, List<String>>(FavoritesNotifier.new);
+
+class FavoritesNotifier extends Notifier<List<String>> {
+  FavoritesService get _svc => ref.read(favoritesServiceProvider);
+
+  @override
+  List<String> build() => _svc.ids();
+
+  bool isFavorite(String id) => state.contains(id);
+
+  Future<void> toggle(String id) async {
+    state = await _svc.toggle(id);
+  }
+}
+
+/// Favourite ids resolved to full Book objects (from the local cache).
+final favoriteBooksProvider = FutureProvider<List<Book>>((ref) async {
+  final ids = ref.watch(favoritesProvider);
+  if (ids.isEmpty) return const [];
+  final repo = ref.read(repositoryProvider);
+  final cached = {for (final b in await repo.getCachedBooks(ids)) b.id: b};
+  return [for (final id in ids) cached[id] ?? _minimalBook(id)];
+});
+
+/// Other audiobooks by the same author/creator (for "More by …").
+final booksByAuthorProvider =
+    FutureProvider.autoDispose.family<List<Book>, String>((ref, author) {
+  return ref.read(repositoryProvider).booksByAuthor(author);
+});
 
 final audiobookPlayerProvider = Provider<AudiobookPlayer>((ref) {
   final player = AudiobookPlayer(

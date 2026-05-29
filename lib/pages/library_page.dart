@@ -48,6 +48,7 @@ class LibraryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(libraryProvider);
+    final favorites = ref.watch(favoriteBooksProvider).value ?? const <Book>[];
 
     return Scaffold(
       body: RefreshIndicator(
@@ -80,16 +81,18 @@ class LibraryPage extends ConsumerWidget {
                 ),
               ],
               data: (data) {
-                if (data.isEmpty) {
+                if (data.isEmpty && favorites.isEmpty) {
                   return [
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: _empty(context,
-                          'Books you play or download will appear here.'),
+                          'Books you favourite, play, or download appear here.'),
                     ),
                   ];
                 }
                 return [
+                  if (favorites.isNotEmpty)
+                    _rail(context, 'Favourites', favorites),
                   if (data.continueListening.isNotEmpty)
                     _rail(context, 'Continue listening', data.continueListening),
                   if (data.downloaded.isNotEmpty) ...[

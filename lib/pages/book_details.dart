@@ -179,6 +179,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         ref.watch(downloadedChaptersProvider(widget.book.id)).value ??
             const <String>{};
     final downloads = ref.watch(downloadProgressProvider);
+    final isFavorite = ref.watch(favoritesProvider).contains(widget.book.id);
     final coverColor =
         ref.watch(coverColorProvider(widget.book.image)).value ??
             theme.colorScheme.primary;
@@ -314,6 +315,14 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                           onDelete: () => _deleteChapter(chapters[i]),
                         );
                       }),
+                    if ((widget.book.author ?? '').isNotEmpty)
+                      _MoreByAuthor(
+                        author: widget.book.author!,
+                        excludeId: widget.book.id,
+                        onOpen: (b) => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => DetailPage(b)),
+                        ),
+                      ),
                   ]),
                 ),
               ],
@@ -324,17 +333,37 @@ class _DetailPageState extends ConsumerState<DetailPage> {
             left: 0,
             right: 0,
             child: SafeArea(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: CircleAvatar(
-                    backgroundColor: Colors.black38,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).maybePop(),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.black38,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        tooltip: 'Back',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
                     ),
-                  ),
+                    CircleAvatar(
+                      backgroundColor: Colors.black38,
+                      child: IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite
+                              ? theme.colorScheme.primary
+                              : Colors.white,
+                        ),
+                        tooltip: isFavorite
+                            ? 'Remove from favourites'
+                            : 'Add to favourites',
+                        onPressed: () => ref
+                            .read(favoritesProvider.notifier)
+                            .toggle(widget.book.id),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -350,6 +379,50 @@ class _DetailPageState extends ConsumerState<DetailPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Horizontal rail of other audiobooks by the same author.
+class _MoreByAuthor extends ConsumerWidget {
+  final String author;
+  final String excludeId;
+  final void Function(Book book) onOpen;
+  const _MoreByAuthor({
+    required this.author,
+    required this.excludeId,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(booksByAuthorProvider(author));
+    final books = (async.value ?? const <Book>[])
+        .where((b) => b.id != excludeId)
+        .toList();
+    if (books.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Text('More by $author', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 218,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: books.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, i) => BookPosterCard(
+              book: books[i],
+              width: 140,
+              onTap: () => onOpen(books[i]),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

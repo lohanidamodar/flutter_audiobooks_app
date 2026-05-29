@@ -5,8 +5,9 @@ import 'package:audiobooks/resources/repository.dart';
 import 'package:http/http.dart' show Client;
 
 const _metadata = "https://archive.org/metadata";
-const _commonParams =
-    "q=collection:(librivoxaudio)&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size";
+const _fl =
+    "fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size";
+const _commonParams = "q=collection:(librivoxaudio)&$_fl";
 
 const _latestBooksApi =
     "https://archive.org/advancedsearch.php?$_commonParams&sort[]=addeddate desc&output=json";
@@ -69,15 +70,27 @@ class ArchiveApiProvider implements Source {
     return _docsToBooks(await _getJson(_mostDownloaded));
   }
 
+  Future<List<Book>> _query(String q, {int rows = 30}) async {
+    final encoded = Uri.encodeQueryComponent('$q AND collection:(librivoxaudio)');
+    final url = 'https://archive.org/advancedsearch.php?q=$encoded&$_fl'
+        '&sort[]=downloads desc&rows=$rows&page=1&output=json';
+    return _docsToBooks(await _getJson(url));
+  }
+
   @override
   Future<List<Book>> searchBooks(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return [];
-    final q = Uri.encodeQueryComponent(
-        'title:($trimmed) AND collection:(librivoxaudio)');
-    final url =
-        'https://archive.org/advancedsearch.php?q=$q&fl=runtime,avg_rating,num_reviews,title,description,identifier,creator,date,downloads,subject,item_size&sort[]=downloads desc&rows=30&page=1&output=json';
-    return _docsToBooks(await _getJson(url));
+    // Match either the title or the author/creator so typing an author surfaces
+    // their readings.
+    return _query('(title:($trimmed) OR creator:($trimmed))');
+  }
+
+  @override
+  Future<List<Book>> booksByAuthor(String author) async {
+    final trimmed = author.trim();
+    if (trimmed.isEmpty) return [];
+    return _query('creator:("$trimmed")', rows: 20);
   }
 }
 
