@@ -1,0 +1,1 @@
+First release of Listora — browse, search, and stream thousands of free LibriVox audiobooks; download for offline listening; favourites, resume, sleep timer, and adjustable speed.

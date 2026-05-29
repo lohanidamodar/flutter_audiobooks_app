@@ -1,0 +1,20 @@
+default_platform(:android)
+
+platform :android do
+  desc "Upload listing text, images & screenshots only (no binary)"
+  lane :metadata do
+    upload_to_play_store(
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: false,
+    )
+  end
+
+  desc "Upload the signed release App Bundle to the internal track"
+  lane :internal do
+    upload_to_play_store(
+      track: "internal",
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+    )
+  end
+end

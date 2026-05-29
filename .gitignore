@@ -88,3 +88,11 @@ ios/Flutter/flutter_export_environment.sh
 .tmp.png
 .u.xml
 android/.kotlin/
+
+# Fastlane
+fastlane/play-store-key.json
+fastlane/*.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output

@@ -1,0 +1,4 @@
+# Path to your Google Play service-account JSON key.
+# This file is gitignored — never commit it (public repo).
+json_key_file("fastlane/play-store-key.json")
+package_name("com.popupbits.listora")
