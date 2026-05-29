@@ -1,0 +1,14 @@
+# Copy this file to `android/key.properties` and fill in your values.
+# `android/key.properties` and the keystore (*.jks) are gitignored — NEVER
+# commit them to this public repo.
+#
+# Generate an upload keystore (recommended with Play App Signing):
+#   keytool -genkey -v -keystore ~/upload-keystore.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Then point storeFile at it (absolute path, or relative to android/app).
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks
