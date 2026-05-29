@@ -130,7 +130,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _appBar() => SliverAppBar(
-        title: const Text('Audiobooks'),
+        title: const Text('Listora'),
         floating: true,
         actions: [
           _SearchAnchorButton(onOpen: _openDetail, onAuthor: _openAuthor),

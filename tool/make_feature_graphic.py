@@ -62,7 +62,7 @@ img.paste(icon, (62, 100), mask)
 d = ImageDraw.Draw(img)
 tx = 410
 # wordmark
-d.text((tx, 150), "Audiobooks", font=font(SERIF, 96, weight=600), fill=CREAM)
+d.text((tx, 150), "Listora", font=font(SERIF, 96, weight=600), fill=CREAM)
 # tagline
 d.text((tx, 268), "Free classic audiobooks,", font=ImageFont.truetype(SANS, 40),
        fill=(214, 202, 184))

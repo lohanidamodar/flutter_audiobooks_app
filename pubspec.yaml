@@ -1,5 +1,5 @@
 name: audiobooks
-description: A Flutter audiobooks client backed by archive.org / LibriVox.
+description: Listora — a Flutter audiobook player backed by archive.org / LibriVox.
 
 publish_to: 'none'
 

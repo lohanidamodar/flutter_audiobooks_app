@@ -5,7 +5,7 @@ import 'package:popup_bits_design/popup_bits_design.dart';
 class AudiobookTheme {
   static const product = PbProductTheme(
     id: 'audiobooks',
-    name: 'Audiobooks',
+    name: 'Listora',
     accent: Color(0xFFE8A33D),
     accentSoft: Color(0xFFFEF3C7),
     accentInk: Color(0xFF14110E),

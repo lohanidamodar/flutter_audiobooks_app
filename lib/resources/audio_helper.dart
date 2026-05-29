@@ -141,7 +141,7 @@ class AudiobookPlayer {
 Future<void> initAudioService() async {
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.popupbits.audiobooks.channel.audio',
-    androidNotificationChannelName: 'Audiobook Playback',
+    androidNotificationChannelName: 'Listora',
     // Not "ongoing": the notification can be swiped away when paused/stopped.
     androidNotificationOngoing: false,
     androidStopForegroundOnPause: true,

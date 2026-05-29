@@ -33,7 +33,7 @@ class AudioBooksApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(settingsProvider).themeMode;
     return MaterialApp(
-      title: 'Audiobooks',
+      title: 'Listora',
       theme: AudiobookTheme.light(),
       darkTheme: AudiobookTheme.dark(),
       themeMode: themeMode,

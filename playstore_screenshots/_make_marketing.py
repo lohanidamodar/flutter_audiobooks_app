@@ -99,7 +99,7 @@ for name, headline, sub in SHOTS:
     d = ImageDraw.Draw(canvas)
 
     # kicker (app name, tracked small caps)
-    tracked(d, cw / 2, 150, "A U D I O B O O K S", kicker_font, ACCENT, tracking=6)
+    tracked(d, cw / 2, 150, "L I S T O R A", kicker_font, ACCENT, tracking=6)
 
     # headline
     draw_centered(d, cw / 2, 215, headline, head_font, ACCENT_SOFT, spacing=12)

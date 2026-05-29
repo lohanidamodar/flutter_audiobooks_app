@@ -14,7 +14,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.popupbits.flutter_audiobooks_app"
+    namespace = "com.popupbits.listora"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.popupbits.flutter_audiobooks_app"
+        applicationId = "com.popupbits.listora"
         minSdkVersion = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

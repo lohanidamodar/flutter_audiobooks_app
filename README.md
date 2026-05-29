@@ -1,6 +1,6 @@
-# Audiobooks
+# Listora
 
-A beautiful, free audiobook player for the public-domain
+Listora — a beautiful, free audiobook player for the public-domain
 [LibriVox](https://librivox.org) catalogue (served via the
 [Internet Archive](https://archive.org)). Browse, stream, download for offline
 listening, and pick up right where you left off — all free, forever.
