@@ -118,17 +118,28 @@ class BookListRow extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
   final String? subtitleOverride;
+
+  /// When set and the book has an author, the author line becomes a tappable
+  /// link (e.g. to that author's page).
+  final VoidCallback? onAuthorTap;
+
   const BookListRow({
     super.key,
     required this.book,
     required this.onTap,
     this.trailing,
     this.subtitleOverride,
+    this.onAuthorTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final linkAuthor = onAuthorTap != null &&
+        subtitleOverride == null &&
+        (book.author ?? '').isNotEmpty;
+    final subtitleText =
+        subtitleOverride ?? book.author ?? 'Unknown author';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -149,13 +160,27 @@ class BookListRow extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitleOverride ?? book.author ?? 'Unknown author',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
+                  if (linkAuthor)
+                    GestureDetector(
+                      onTap: onAuthorTap,
+                      child: Text(
+                        subtitleText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      subtitleText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
                 ],
               ),
             ),

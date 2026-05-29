@@ -394,6 +394,8 @@ class _MoreByAuthor extends ConsumerWidget {
     required this.onOpen,
   });
 
+  static const _railLimit = 5;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -402,27 +404,90 @@ class _MoreByAuthor extends ConsumerWidget {
         .where((b) => b.id != excludeId)
         .toList();
     if (books.isEmpty) return const SizedBox.shrink();
+    final shown = books.take(_railLimit).toList();
+    final hasMore = books.length > _railLimit;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        Text('More by $author', style: theme.textTheme.titleLarge),
+        Row(
+          children: [
+            Expanded(
+              child: Text('More by $author', style: theme.textTheme.titleLarge),
+            ),
+            if (hasMore)
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AuthorBooksPage(author: author, excludeId: excludeId),
+                  ),
+                ),
+                child: const Text('See all'),
+              ),
+          ],
+        ),
         const SizedBox(height: 12),
         SizedBox(
           height: 218,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
-            itemCount: books.length,
+            itemCount: shown.length,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, i) => BookPosterCard(
-              book: books[i],
+              book: shown[i],
               width: 140,
-              onTap: () => onOpen(books[i]),
+              onTap: () => onOpen(shown[i]),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Full grid of an author's audiobooks, opened from "See all".
+class AuthorBooksPage extends ConsumerWidget {
+  final String author;
+  final String excludeId;
+  const AuthorBooksPage(
+      {super.key, required this.author, required this.excludeId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(booksByAuthorProvider(author));
+    return Scaffold(
+      appBar: AppBar(title: Text('By $author')),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text('Could not load books by $author',
+                textAlign: TextAlign.center),
+          ),
+        ),
+        data: (all) {
+          final books = all.where((b) => b.id != excludeId).toList();
+          if (books.isEmpty) {
+            return Center(child: Text('No other books by $author'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: books.length,
+            itemBuilder: (context, i) => BookListRow(
+              book: books[i],
+              subtitleOverride: books[i].totalTime != null
+                  ? 'Total time ${books[i].totalTime}'
+                  : null,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => DetailPage(books[i])),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -491,11 +556,40 @@ class _GradientHeader extends StatelessWidget {
                     fontSize: 24, fontWeight: FontWeight.w600, height: 1.15),
               ),
               const SizedBox(height: 4),
-              Text(
-                book.author ?? 'Unknown author',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
+              if ((book.author ?? '').isEmpty)
+                Text(
+                  'Unknown author',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                )
+              else
+                InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AuthorBooksPage(
+                          author: book.author!, excludeId: book.id),
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          book.author!,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(Icons.chevron_right,
+                            size: 18, color: theme.colorScheme.primary),
+                      ],
+                    ),
+                  ),
+                ),
               if (book.totalTime != null) ...[
                 const SizedBox(height: 2),
                 Text('Total time ${book.totalTime}',

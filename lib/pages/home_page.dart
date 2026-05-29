@@ -43,6 +43,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  void _openAuthor(Book book) {
+    final author = book.author;
+    if (author == null || author.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AuthorBooksPage(author: author, excludeId: ''),
+      ),
+    );
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(topBooksProvider);
     ref.invalidate(recentBooksProvider);
@@ -122,7 +132,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         title: const Text('Audiobooks'),
         floating: true,
         actions: [
-          _SearchAnchorButton(onOpen: _openDetail),
+          _SearchAnchorButton(onOpen: _openDetail, onAuthor: _openAuthor),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
@@ -162,13 +172,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 class _SearchAnchorButton extends ConsumerWidget {
   final void Function(Book book) onOpen;
-  const _SearchAnchorButton({required this.onOpen});
+  final void Function(Book book) onAuthor;
+  const _SearchAnchorButton({required this.onOpen, required this.onAuthor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SearchAnchor(
       isFullScreen: true,
-      viewHintText: 'Search audiobooks…',
+      viewHintText: 'Search by title or author…',
       builder: (context, controller) => IconButton(
         icon: const Icon(Icons.search),
         tooltip: 'Search',
@@ -182,6 +193,10 @@ class _SearchAnchorButton extends ConsumerWidget {
             controller.closeView(null);
             onOpen(book);
           },
+          onAuthor: (book) {
+            controller.closeView(null);
+            onAuthor(book);
+          },
         ),
       ],
     );
@@ -190,7 +205,8 @@ class _SearchAnchorButton extends ConsumerWidget {
 
 class _SearchResults extends ConsumerWidget {
   final void Function(Book book) onOpen;
-  const _SearchResults({required this.onOpen});
+  final void Function(Book book) onAuthor;
+  const _SearchResults({required this.onOpen, required this.onAuthor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -216,7 +232,7 @@ class _SearchResults extends ConsumerWidget {
       error: (_, __) => message('Search failed. Try again.'),
       data: (books) {
         if (query.isEmpty) {
-          return message('Search the LibriVox catalogue by title.');
+          return message('Search the LibriVox catalogue by title or author.');
         }
         if (books.isEmpty) return message('No results for "$query".');
         return ListView.builder(
@@ -226,6 +242,7 @@ class _SearchResults extends ConsumerWidget {
           itemBuilder: (context, i) => BookListRow(
             book: books[i],
             onTap: () => onOpen(books[i]),
+            onAuthorTap: () => onAuthor(books[i]),
           ),
         );
       },
