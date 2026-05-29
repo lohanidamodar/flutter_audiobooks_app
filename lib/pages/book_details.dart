@@ -105,6 +105,19 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     ref.invalidate(bookmarkProvider(widget.book.id));
   }
 
+  /// On Android 13+ (API 33) the notification permission defaults to denied
+  /// and must be requested at runtime, otherwise background_downloader's
+  /// progress/complete notification never appears (the download still runs).
+  /// Safe to call repeatedly: if already granted, or permanently denied, the
+  /// OS skips the dialog.
+  Future<void> _ensureNotificationPermission() async {
+    final permissions = FileDownloader().permissions;
+    if (await permissions.status(PermissionType.notifications) !=
+        PermissionStatus.granted) {
+      await permissions.request(PermissionType.notifications);
+    }
+  }
+
   DownloadTask _taskFor(AudioFile chapter) => DownloadTask(
         taskId: DownloadsServiceTaskId(widget.book.id, chapter.name).value,
         url: chapter.url!,
@@ -131,6 +144,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       );
       return;
     }
+    await _ensureNotificationPermission();
     for (final c in pending) {
       FileDownloader().enqueue(_taskFor(c));
     }
@@ -141,6 +155,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
 
   Future<void> _downloadChapter(AudioFile chapter) async {
     if (chapter.url == null) return;
+    await _ensureNotificationPermission();
     await FileDownloader().enqueue(_taskFor(chapter));
   }
 
