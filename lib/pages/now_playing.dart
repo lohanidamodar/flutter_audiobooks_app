@@ -4,9 +4,17 @@ import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:audiobooks/widgets/immersive_scrubber.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+
+/// Darkens a cover colour so the gradient top stays readable for white text
+/// even when the cover is pale (many LibriVox covers are near-white).
+Color _gradientGlow(Color c) {
+  final hsl = HSLColor.fromColor(c);
+  return hsl.withLightness((hsl.lightness).clamp(0.0, 0.42)).toColor();
+}
 
 class NowPlayingPage extends ConsumerWidget {
   const NowPlayingPage({super.key});
@@ -31,9 +39,11 @@ class NowPlayingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Close this page automatically if playback is stopped from anywhere.
+    // Close this page automatically if playback is stopped from anywhere — but
+    // only if this page is the current route (don't steal a sheet's pop).
     ref.listen(playerStateProvider, (_, next) {
       if (next.value?.processingState == ProcessingState.idle &&
+          (ModalRoute.of(context)?.isCurrent ?? false) &&
           Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
@@ -46,7 +56,7 @@ class NowPlayingPage extends ConsumerWidget {
         : null;
     final accent = Theme.of(context).colorScheme.primary;
     const bg = Color(0xFF0B0A09);
-    final glow = coverColor ?? accent;
+    final glow = _gradientGlow(coverColor ?? accent);
 
     return Scaffold(
       backgroundColor: bg,
@@ -176,10 +186,12 @@ class _Cover extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: artUrl != null
-                  ? Image.network(
-                      artUrl!,
+                  ? CachedNetworkImage(
+                      imageUrl: artUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _coverFallback(),
+                      memCacheWidth: 720,
+                      errorWidget: (_, __, ___) => _coverFallback(),
+                      placeholder: (_, __) => _coverFallback(),
                     )
                   : _coverFallback(),
             ),
@@ -268,23 +280,26 @@ class _Transport extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _ghost(Icons.skip_previous,
+        _ghost(Icons.skip_previous, 'Previous chapter',
             player.hasPrevious ? player.seekToPrevious : null),
-        _ghost(Icons.replay_10,
+        _ghost(Icons.replay_10, 'Back 10 seconds',
             () => player.seek(player.position - const Duration(seconds: 10))),
         _PlayButton(accent: accent, playing: playing, busy: busy, player: player),
-        _ghost(Icons.forward_30,
+        _ghost(Icons.forward_30, 'Forward 30 seconds',
             () => player.seek(player.position + const Duration(seconds: 30))),
-        _ghost(Icons.skip_next, player.hasNext ? player.seekToNext : null),
+        _ghost(Icons.skip_next, 'Next chapter',
+            player.hasNext ? player.seekToNext : null),
       ],
     );
   }
 
-  Widget _ghost(IconData icon, VoidCallback? onPressed) => IconButton(
+  Widget _ghost(IconData icon, String tooltip, VoidCallback? onPressed) =>
+      IconButton(
         icon: Icon(icon),
         iconSize: 30,
         color: Colors.white,
         disabledColor: Colors.white24,
+        tooltip: tooltip,
         onPressed: onPressed,
       );
 }
@@ -327,6 +342,7 @@ class _PlayButton extends StatelessWidget {
               icon: Icon(playing ? Icons.pause : Icons.play_arrow),
               iconSize: 40,
               color: const Color(0xFF14110E),
+              tooltip: playing ? 'Pause' : 'Play',
               onPressed: playing ? player.pause : player.play,
             ),
     );

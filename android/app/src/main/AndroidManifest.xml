@@ -9,6 +9,7 @@
     <application
         android:name="${applicationName}"
         android:label="Audiobooks"
+        android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher">
 
         <activity

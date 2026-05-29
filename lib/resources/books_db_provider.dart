@@ -52,6 +52,9 @@ class DatabaseHelper implements Cache {
     );
   """;
 
+  static const String createAudiofilesBookIdIndex =
+      "CREATE INDEX IF NOT EXISTS idx_af_book ON $audioFilesTable($afBookIdColumn);";
+
   final String createBooksTable = """
     CREATE TABLE $bookTable (
       $columnId TEXT PRIMARY KEY,
@@ -78,13 +81,26 @@ class DatabaseHelper implements Cache {
   _initDB() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "maindb.db");
-    var db = await openDatabase(path, version: 1, onCreate: _onCreate);
+    var db = await openDatabase(
+      path,
+      version: 2,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
     return db;
   }
 
   void _onCreate(Database db, int version) async {
     await db.execute(createAudiofilesTable);
     await db.execute(createBooksTable);
+    await db.execute(createAudiofilesBookIdIndex);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // v2: index audiofiles by book_id to avoid full-table scans per book.
+      await db.execute(createAudiofilesBookIdIndex);
+    }
   }
 
   // insert
@@ -121,8 +137,22 @@ class DatabaseHelper implements Cache {
   Future<List<Book>> getBooks(int offset, int limit) async {
     var dbClient = await db;
     var res = await dbClient.rawQuery(
-        'SELECT * FROM $bookTable ORDER BY rowid LIMIT $offset,$limit');
+        'SELECT * FROM $bookTable ORDER BY rowid LIMIT ?,?', [offset, limit]);
     return Book.fromDbArray(res);
+  }
+
+  /// Resolves many books in a single query (preserves the requested order).
+  Future<List<Book>> getBooksByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    var dbClient = await db;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final res = await dbClient.query(
+      bookTable,
+      where: "$columnId IN ($placeholders)",
+      whereArgs: ids,
+    );
+    final byId = {for (final b in Book.fromDbArray(res)) b.id: b};
+    return [for (final id in ids) if (byId[id] != null) byId[id]!];
   }
 
   Future close() async {

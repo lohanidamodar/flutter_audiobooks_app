@@ -50,6 +50,8 @@ class _ImmersiveScrubberState extends State<ImmersiveScrubber> {
             min: 0,
             max: maxMs > 0 ? maxMs : 1,
             value: value,
+            semanticFormatterCallback: (v) =>
+                formatDuration(Duration(milliseconds: v.round())),
             onChanged: maxMs > 0
                 ? (v) => setState(() => _dragValue = v)
                 : null,

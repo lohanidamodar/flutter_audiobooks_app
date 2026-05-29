@@ -118,7 +118,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _appBar() => SliverAppBar.large(
+  Widget _appBar() => SliverAppBar(
         title: const Text('Audiobooks'),
         floating: true,
         actions: [

@@ -1,5 +1,6 @@
 import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/providers/providers.dart';
+import 'package:audiobooks/resources/downloads_service.dart';
 import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
@@ -19,12 +20,6 @@ class DetailPage extends ConsumerStatefulWidget {
 }
 
 class _DetailPageState extends ConsumerState<DetailPage> {
-  final Set<String> _downloading = {};
-  final Map<String, double> _progress = {};
-  bool _bulkDownloading = false;
-  int _bulkDone = 0;
-  int _bulkTotal = 0;
-
   @override
   void initState() {
     super.initState();
@@ -71,20 +66,34 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       {Duration position = Duration.zero, bool openNowPlaying = false}) async {
     if (chapters.isEmpty) return;
     final safeIndex = index.clamp(0, chapters.length - 1);
+    final messenger = ScaffoldMessenger.of(context);
     final controller = ref.read(audiobookPlayerProvider);
-    if (controller.currentBook?.id != widget.book.id) {
-      await controller.loadBook(
-        book: widget.book,
-        chapters: chapters,
-        startIndex: safeIndex,
-        startPosition: position,
-      );
-    } else {
-      await controller.player.seek(position, index: safeIndex);
+    try {
+      if (controller.currentBook?.id != widget.book.id) {
+        await controller.loadBook(
+          book: widget.book,
+          chapters: chapters,
+          startIndex: safeIndex,
+          startPosition: position,
+        );
+      } else {
+        await controller.player.seek(position, index: safeIndex);
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text("Couldn't load this chapter. Check your connection.")));
+      }
+      return;
     }
     // Do NOT await play(): just_audio's play() future only completes when
-    // playback is later paused/stopped. Guard against dead-link errors.
-    controller.player.play().catchError((_) {});
+    // playback is later paused/stopped. Surface dead-link errors though.
+    controller.player.play().catchError((_) {
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text("Couldn't play this chapter — the source may be unavailable.")));
+      }
+    });
     if (openNowPlaying && mounted) {
       Navigator.of(context).push(NowPlayingPage.route());
     }
@@ -98,21 +107,22 @@ class _DetailPageState extends ConsumerState<DetailPage> {
   DownloadTask _taskFor(AudioFile chapter) => DownloadTask(
         taskId: DownloadsServiceTaskId(widget.book.id, chapter.name).value,
         url: chapter.url!,
-        filename: chapter.name ?? '${widget.book.id}.mp3',
+        filename: DownloadsService.fileNameFor(chapter.name,
+            fallback: '${widget.book.id}.mp3'),
         baseDirectory: BaseDirectory.applicationDocuments,
-        directory: 'audiobooks/${widget.book.id}',
+        directory: DownloadsService.directoryFor(widget.book.id),
         updates: Updates.statusAndProgress,
         allowPause: true,
         retries: 3,
       );
 
-  Future<void> _downloadAll(List<AudioFile> chapters) async {
-    if (_bulkDownloading) return;
+  /// Enqueues downloads; progress/status is tracked globally by
+  /// [downloadProgressProvider], so it survives leaving and reopening the page.
+  Future<void> _downloadAll(
+      List<AudioFile> chapters, Set<String> downloaded) async {
     final messenger = ScaffoldMessenger.of(context);
-    final localPaths =
-        await ref.read(downloadsServiceProvider).localPathsForBook(widget.book.id);
     final pending = chapters
-        .where((c) => c.url != null && !localPaths.containsKey(c.name))
+        .where((c) => c.url != null && !downloaded.contains(c.name))
         .toList();
     if (pending.isEmpty) {
       messenger.showSnackBar(
@@ -120,98 +130,44 @@ class _DetailPageState extends ConsumerState<DetailPage> {
       );
       return;
     }
-
-    final tasks = [for (final c in pending) _taskFor(c)];
-    setState(() {
-      _bulkDownloading = true;
-      _bulkDone = 0;
-      _bulkTotal = tasks.length;
-      _downloading.addAll(tasks.map((t) => t.taskId));
-    });
-
-    final batch = await FileDownloader().downloadBatch(
-      tasks,
-      batchProgressCallback: (succeeded, failed) {
-        if (mounted) setState(() => _bulkDone = succeeded + failed);
-      },
-      taskProgressCallback: (update) {
-        if (mounted) setState(() => _progress[update.task.taskId] = update.progress);
-      },
-      taskStatusCallback: (update) {
-        if (!mounted) return;
-        final s = update.status;
-        if (s == TaskStatus.complete ||
-            s == TaskStatus.failed ||
-            s == TaskStatus.canceled) {
-          setState(() {
-            _downloading.remove(update.task.taskId);
-            _progress.remove(update.task.taskId);
-          });
-          // Reflect each finished chapter immediately, not only when the whole
-          // batch completes.
-          if (s == TaskStatus.complete) {
-            ref.invalidate(downloadedChaptersProvider(widget.book.id));
-          }
-        }
-      },
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _bulkDownloading = false;
-      _downloading.removeAll(tasks.map((t) => t.taskId));
-      _progress.clear();
-    });
-    _refreshDownloadState();
-    final failed = batch.numFailed;
+    for (final c in pending) {
+      FileDownloader().enqueue(_taskFor(c));
+    }
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(failed == 0
-            ? 'Downloaded ${tasks.length} chapters'
-            : '${batch.numSucceeded} downloaded · $failed failed'),
-      ),
+      SnackBar(content: Text('Downloading ${pending.length} chapters…')),
     );
   }
 
   Future<void> _downloadChapter(AudioFile chapter) async {
     if (chapter.url == null) return;
-    final id = DownloadsServiceTaskId(widget.book.id, chapter.name).value;
-    if (_downloading.contains(id)) return;
-    setState(() => _downloading.add(id));
+    await FileDownloader().enqueue(_taskFor(chapter));
+  }
 
-    final task = _taskFor(chapter);
-
-    final result = await FileDownloader().download(
-      task,
-      onProgress: (p) {
-        if (mounted) setState(() => _progress[id] = p);
-      },
-      onStatus: (status) {
-        if (!mounted) return;
-        if (status == TaskStatus.complete ||
-            status == TaskStatus.failed ||
-            status == TaskStatus.canceled) {
-          setState(() {
-            _downloading.remove(id);
-            _progress.remove(id);
-          });
-        }
-      },
+  Future<void> _deleteChapter(AudioFile chapter) async {
+    final title =
+        chapter.title ?? chapter.name ?? 'this chapter';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove download?'),
+        content: Text('Delete the downloaded file for "$title"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
     );
-
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    if (result.status == TaskStatus.complete) {
-      _refreshDownloadState();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Downloaded ${task.filename}')),
-      );
-    } else if (result.status == TaskStatus.failed ||
-        result.status == TaskStatus.notFound) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to download ${task.filename}')),
-      );
-    }
+    if (confirmed != true) return;
+    await ref
+        .read(downloadsServiceProvider)
+        .deleteChapter(widget.book.id, chapter.name);
+    _refreshDownloadState();
   }
 
   @override
@@ -222,6 +178,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     final downloaded =
         ref.watch(downloadedChaptersProvider(widget.book.id)).value ??
             const <String>{};
+    final downloads = ref.watch(downloadProgressProvider);
     final coverColor =
         ref.watch(coverColorProvider(widget.book.image)).value ??
             theme.colorScheme.primary;
@@ -277,13 +234,19 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                           chapters.every((c) => downloaded.contains(c.name));
                       final anyDownloaded =
                           chapters.any((c) => downloaded.contains(c.name));
+                      final activeCount = chapters.where((c) {
+                        final id = DownloadsServiceTaskId(
+                                widget.book.id, c.name)
+                            .value;
+                        return downloads.isActive(id);
+                      }).length;
                       return Row(
                         children: [
                           Expanded(
                             child: Text('${chapters.length} chapters',
                                 style: theme.textTheme.titleLarge),
                           ),
-                          if (_bulkDownloading)
+                          if (activeCount > 0)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -294,7 +257,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                                       strokeWidth: 2),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('$_bulkDone/$_bulkTotal',
+                                Text('$activeCount downloading',
                                     style: theme.textTheme.labelLarge),
                               ],
                             )
@@ -316,7 +279,8 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                               )
                             else
                               TextButton.icon(
-                                onPressed: () => _downloadAll(chapters),
+                                onPressed: () =>
+                                    _downloadAll(chapters, downloaded),
                                 icon: const Icon(
                                     Icons.download_for_offline_outlined,
                                     size: 20),
@@ -324,7 +288,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                               ),
                             if (anyDownloaded)
                               IconButton(
-                                tooltip: 'Remove downloads',
+                                tooltip: 'Remove all downloads',
                                 icon: const Icon(Icons.delete_outline),
                                 onPressed: _removeDownloads,
                               ),
@@ -343,10 +307,11 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                           chapter: chapters[i],
                           isBookmarkChapter: bookmark?.chapterIndex == i,
                           isDownloaded: downloaded.contains(chapters[i].name),
-                          isDownloading: _downloading.contains(taskId),
-                          progress: _progress[taskId],
+                          isDownloading: downloads.isActive(taskId),
+                          progress: downloads.progressFor(taskId),
                           onPlay: () => _play(chapters, i),
                           onDownload: () => _downloadChapter(chapters[i]),
+                          onDelete: () => _deleteChapter(chapters[i]),
                         );
                       }),
                   ]),
@@ -551,6 +516,7 @@ class _ChapterTile extends StatelessWidget {
   final double? progress;
   final VoidCallback onPlay;
   final VoidCallback onDownload;
+  final VoidCallback onDelete;
 
   const _ChapterTile({
     required this.index,
@@ -561,6 +527,7 @@ class _ChapterTile extends StatelessWidget {
     required this.progress,
     required this.onPlay,
     required this.onDownload,
+    required this.onDelete,
   });
 
   @override
@@ -622,7 +589,11 @@ class _ChapterTile extends StatelessWidget {
       );
     }
     if (isDownloaded) {
-      return Icon(Icons.download_done, color: theme.colorScheme.primary);
+      return IconButton(
+        tooltip: 'Remove download',
+        icon: Icon(Icons.delete_outline, color: theme.colorScheme.primary),
+        onPressed: onDelete,
+      );
     }
     return IconButton(
       tooltip: 'Download',

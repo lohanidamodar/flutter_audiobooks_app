@@ -3,6 +3,7 @@ import 'package:audiobooks/resources/downloads_service.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:audiobooks/resources/playback_bookmarks.dart';
 import 'package:audiobooks/resources/repository.dart';
+import 'package:background_downloader/background_downloader.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -147,13 +148,16 @@ final speedProvider = StreamProvider<double>((ref) {
   return ref.watch(_playerProvider).speedStream;
 });
 
-/// Dominant cover colour for immersive gradients. Cached per image URL.
+/// Dominant cover colour for immersive gradients. Auto-disposed so browsed
+/// covers' palettes aren't retained for the whole session; the decoded image
+/// stays in CachedNetworkImage's cache, so recompute on return is cheap.
 final coverColorProvider =
-    FutureProvider.family<Color, String>((ref, imageUrl) async {
+    FutureProvider.autoDispose.family<Color, String>((ref, imageUrl) async {
+  ref.keepAlive(); // keep within a session once computed; GC'd when truly idle
   try {
     final palette = await PaletteGenerator.fromImageProvider(
       CachedNetworkImageProvider(imageUrl),
-      size: const Size(120, 120),
+      size: const Size(96, 96),
       maximumColorCount: 8,
     );
     return palette.vibrantColor?.color ??
@@ -164,6 +168,80 @@ final coverColorProvider =
     return const Color(0xFFE8A33D);
   }
 });
+
+/// Live download state, owned app-wide (survives leaving the detail page) by
+/// subscribing to the global background_downloader updates stream. Maps each
+/// task id to its running progress (0..1) and tracks which are active.
+class DownloadProgress {
+  final Map<String, double> progress;
+  final Set<String> active;
+  const DownloadProgress({this.progress = const {}, this.active = const {}});
+
+  double? progressFor(String taskId) => progress[taskId];
+  bool isActive(String taskId) => active.contains(taskId);
+}
+
+final downloadProgressProvider =
+    NotifierProvider<DownloadProgressNotifier, DownloadProgress>(
+        DownloadProgressNotifier.new);
+
+class DownloadProgressNotifier extends Notifier<DownloadProgress> {
+  @override
+  DownloadProgress build() {
+    final sub = FileDownloader().updates.listen(_onUpdate);
+    ref.onDispose(sub.cancel);
+    return const DownloadProgress();
+  }
+
+  static String? bookIdOf(Task task) {
+    const prefix = 'audiobooks/';
+    final d = task.directory;
+    if (!d.startsWith(prefix)) return null;
+    final id = d.substring(prefix.length);
+    return id.isEmpty ? null : id;
+  }
+
+  void _onUpdate(TaskUpdate update) {
+    final id = update.task.taskId;
+    final progress = Map<String, double>.from(state.progress);
+    final active = Set<String>.from(state.active);
+
+    if (update is TaskProgressUpdate) {
+      if (update.progress > 0 && update.progress < 1) {
+        progress[id] = update.progress;
+        active.add(id);
+      } else {
+        progress.remove(id);
+      }
+    } else if (update is TaskStatusUpdate) {
+      switch (update.status) {
+        case TaskStatus.enqueued:
+        case TaskStatus.running:
+          active.add(id);
+          break;
+        case TaskStatus.complete:
+          active.remove(id);
+          progress.remove(id);
+          final bookId = bookIdOf(update.task);
+          if (bookId != null) {
+            ref.invalidate(downloadedChaptersProvider(bookId));
+            ref.invalidate(libraryProvider);
+          }
+          break;
+        case TaskStatus.failed:
+        case TaskStatus.canceled:
+        case TaskStatus.notFound:
+        case TaskStatus.paused:
+          active.remove(id);
+          progress.remove(id);
+          break;
+        default:
+          break;
+      }
+    }
+    state = DownloadProgress(progress: progress, active: active);
+  }
+}
 
 /// Search — runs on submit, exposes results as AsyncValue.
 final searchProvider =
@@ -236,17 +314,16 @@ class LibraryNotifier extends AsyncNotifier<LibraryData> {
     final recentIds = await bookmarks.recentBookIds(limit: 20);
     final downloadedIds = await downloads.downloadedBookIds();
 
-    Future<List<Book>> resolve(Iterable<String> ids) async {
-      final books = <Book>[];
-      for (final id in ids) {
-        books.add(await repo.getCachedBook(id) ?? _minimalBook(id));
-      }
-      return books;
+    Future<List<Book>> resolve(List<String> ids) async {
+      // Single batched query, then fall back to a derived title for any id
+      // whose metadata isn't cached yet (order preserved).
+      final cached = {for (final b in await repo.getCachedBooks(ids)) b.id: b};
+      return [for (final id in ids) cached[id] ?? _minimalBook(id)];
     }
 
     final results = await Future.wait([
-      resolve(recentIds),
-      resolve(downloadedIds),
+      resolve(recentIds.toList()),
+      resolve(downloadedIds.toList()),
     ]);
     return LibraryData(continueListening: results[0], downloaded: results[1]);
   }

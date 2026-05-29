@@ -55,11 +55,12 @@ class LibraryPage extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              pinned: true,
+              floating: true,
               title: const Text('Library'),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh',
                   onPressed: () =>
                       ref.read(libraryProvider.notifier).refresh(),
                 ),

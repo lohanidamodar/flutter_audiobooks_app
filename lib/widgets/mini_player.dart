@@ -1,5 +1,6 @@
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
@@ -37,12 +38,6 @@ class MiniPlayer extends ConsumerWidget {
         ? base
         : Color.alphaBlend(coverColor.withValues(alpha: 0.18), base);
 
-    final duration = mediaItem.duration ?? Duration.zero;
-    final position = ref.watch(positionProvider).value ?? Duration.zero;
-    final progress = duration.inMilliseconds == 0
-        ? 0.0
-        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
-
     return Material(
       color: tint,
       child: InkWell(
@@ -53,12 +48,8 @@ class MiniPlayer extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 2,
-              backgroundColor: Colors.white12,
-              color: theme.colorScheme.primary,
-            ),
+            // Only this thin bar rebuilds on each ~1s position tick.
+            _ProgressBar(duration: mediaItem.duration ?? Duration.zero),
             Padding(
               padding: EdgeInsets.fromLTRB(10, 8, 4, 8 + bottomInset),
               child: Row(
@@ -103,6 +94,26 @@ class MiniPlayer extends ConsumerWidget {
   }
 }
 
+class _ProgressBar extends ConsumerWidget {
+  final Duration duration;
+  const _ProgressBar({required this.duration});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final position = ref.watch(positionProvider).value ?? Duration.zero;
+    final progress = duration.inMilliseconds == 0
+        ? 0.0
+        : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    return LinearProgressIndicator(
+      value: progress,
+      minHeight: 2,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      color: theme.colorScheme.primary,
+    );
+  }
+}
+
 class _Artwork extends StatelessWidget {
   final String? artUrl;
   final ThemeData theme;
@@ -122,12 +133,15 @@ class _Artwork extends StatelessWidget {
     if (artUrl == null) return placeholder;
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        artUrl!,
+      child: CachedNetworkImage(
+        imageUrl: artUrl!,
         width: 42,
         height: 42,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => placeholder,
+        memCacheWidth: 96,
+        maxWidthDiskCache: 96,
+        errorWidget: (_, __, ___) => placeholder,
+        placeholder: (_, __) => placeholder,
       ),
     );
   }

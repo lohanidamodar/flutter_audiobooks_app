@@ -34,6 +34,10 @@ class Repository {
 
   Future<Book?> getCachedBook(String id) => DatabaseHelper().getBook(id);
 
+  /// Resolves many cached books in one query (order preserved).
+  Future<List<Book>> getCachedBooks(List<String> ids) =>
+      DatabaseHelper().getBooksByIds(ids);
+
   /// Persist a book so it can be resolved later by the Library (downloaded /
   /// continue-listening books are looked up by id from the local cache).
   Future<void> cacheBook(Book book) => DatabaseHelper().saveBook(book);
