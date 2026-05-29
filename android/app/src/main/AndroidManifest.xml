@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- background_downloader runs downloads in a dataSync foreground service.
+         Android 14+ (API 34, which targetSdk 36 opts into) requires this
+         permission to start that service; without it the service throws a
+         SecurityException and downloads silently fail (no background download,
+         no notification). Media playback already has its own FGS permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
