@@ -159,6 +159,27 @@ class _DetailPageState extends ConsumerState<DetailPage> {
     await FileDownloader().enqueue(_taskFor(chapter));
   }
 
+  Future<void> _pauseChapter(AudioFile chapter) =>
+      FileDownloader().pause(_taskFor(chapter));
+
+  Future<void> _resumeChapter(AudioFile chapter) async {
+    await _ensureNotificationPermission();
+    await FileDownloader().resume(_taskFor(chapter));
+  }
+
+  Future<void> _cancelChapter(AudioFile chapter) => FileDownloader()
+      .cancelTaskWithId(DownloadsServiceTaskId(widget.book.id, chapter.name).value);
+
+  /// Cancels every in-flight (running or paused) chapter download for this book.
+  Future<void> _cancelAll(List<AudioFile> chapters) async {
+    final downloads = ref.read(downloadProgressProvider);
+    final ids = chapters
+        .map((c) => DownloadsServiceTaskId(widget.book.id, c.name).value)
+        .where((id) => downloads.isActive(id) || downloads.isPaused(id))
+        .toList();
+    if (ids.isNotEmpty) await FileDownloader().cancelTasksWithIds(ids);
+  }
+
   Future<void> _deleteChapter(AudioFile chapter) async {
     final title =
         chapter.title ?? chapter.name ?? 'this chapter';
@@ -257,25 +278,41 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                             .value;
                         return downloads.isActive(id);
                       }).length;
+                      final pausedCount = chapters.where((c) {
+                        final id = DownloadsServiceTaskId(
+                                widget.book.id, c.name)
+                            .value;
+                        return downloads.isPaused(id);
+                      }).length;
                       return Row(
                         children: [
                           Expanded(
                             child: Text('${chapters.length} chapters',
                                 style: theme.textTheme.titleLarge),
                           ),
-                          if (activeCount > 0)
+                          if (activeCount + pausedCount > 0)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                                const SizedBox(width: 8),
-                                Text('$activeCount downloading',
+                                if (activeCount > 0) ...[
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Text(
+                                    activeCount > 0
+                                        ? '$activeCount downloading'
+                                        : '$pausedCount paused',
                                     style: theme.textTheme.labelLarge),
+                                IconButton(
+                                  tooltip: 'Cancel all downloads',
+                                  icon: Icon(PhosphorIcons.x),
+                                  onPressed: () => _cancelAll(chapters),
+                                ),
                               ],
                             )
                           else ...[
@@ -325,9 +362,13 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                           isBookmarkChapter: bookmark?.chapterIndex == i,
                           isDownloaded: downloaded.contains(chapters[i].name),
                           isDownloading: downloads.isActive(taskId),
+                          isPaused: downloads.isPaused(taskId),
                           progress: downloads.progressFor(taskId),
                           onPlay: () => _play(chapters, i),
                           onDownload: () => _downloadChapter(chapters[i]),
+                          onPause: () => _pauseChapter(chapters[i]),
+                          onResume: () => _resumeChapter(chapters[i]),
+                          onCancel: () => _cancelChapter(chapters[i]),
                           onDelete: () => _deleteChapter(chapters[i]),
                         );
                       }),
@@ -696,9 +737,13 @@ class _ChapterTile extends StatelessWidget {
   final bool isBookmarkChapter;
   final bool isDownloaded;
   final bool isDownloading;
+  final bool isPaused;
   final double? progress;
   final VoidCallback onPlay;
   final VoidCallback onDownload;
+  final VoidCallback onPause;
+  final VoidCallback onResume;
+  final VoidCallback onCancel;
   final VoidCallback onDelete;
 
   const _ChapterTile({
@@ -707,9 +752,13 @@ class _ChapterTile extends StatelessWidget {
     required this.isBookmarkChapter,
     required this.isDownloaded,
     required this.isDownloading,
+    required this.isPaused,
     required this.progress,
     required this.onPlay,
     required this.onDownload,
+    required this.onPause,
+    required this.onResume,
+    required this.onCancel,
     required this.onDelete,
   });
 
@@ -748,27 +797,22 @@ class _ChapterTile extends StatelessWidget {
   }
 
   Widget _trailing(ThemeData theme) {
-    if (isDownloading) {
-      final pct = progress;
-      return SizedBox(
-        width: 36,
-        height: 36,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                value: (pct != null && pct > 0 && pct < 1) ? pct : null,
-              ),
-            ),
-            if (pct != null && pct > 0)
-              Text('${(pct * 100).round()}',
-                  style: theme.textTheme.labelSmall),
-          ],
-        ),
+    if (isDownloading || isPaused) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _progressRing(theme),
+          _compactIconButton(
+            icon: isPaused ? PhosphorIcons.play : PhosphorIcons.pause,
+            tooltip: isPaused ? 'Resume' : 'Pause',
+            onPressed: isPaused ? onResume : onPause,
+          ),
+          _compactIconButton(
+            icon: PhosphorIcons.x,
+            tooltip: 'Cancel',
+            onPressed: onCancel,
+          ),
+        ],
       );
     }
     if (isDownloaded) {
@@ -782,6 +826,48 @@ class _ChapterTile extends StatelessWidget {
       tooltip: 'Download',
       icon: Icon(PhosphorIcons.downloadSimple),
       onPressed: onDownload,
+    );
+  }
+
+  Widget _progressRing(ThemeData theme) {
+    final pct = progress;
+    final hasPct = pct != null && pct > 0 && pct < 1;
+    return SizedBox(
+      width: 30,
+      height: 30,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              // Paused: static ring at last progress; running: animate.
+              value: isPaused ? (hasPct ? pct : 0) : (hasPct ? pct : null),
+              color: isPaused ? theme.colorScheme.outline : null,
+            ),
+          ),
+          if (hasPct)
+            Text('${(pct * 100).round()}', style: theme.textTheme.labelSmall),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactIconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      iconSize: 20,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+      tooltip: tooltip,
+      icon: Icon(icon),
+      onPressed: onPressed,
     );
   }
 }

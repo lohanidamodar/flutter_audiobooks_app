@@ -3,7 +3,7 @@ description: Listora — a Flutter audiobook player backed by archive.org / Libr
 
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

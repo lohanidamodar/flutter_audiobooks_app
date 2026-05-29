@@ -212,10 +212,16 @@ final coverColorProvider =
 class DownloadProgress {
   final Map<String, double> progress;
   final Set<String> active;
-  const DownloadProgress({this.progress = const {}, this.active = const {}});
+  final Set<String> paused;
+  const DownloadProgress({
+    this.progress = const {},
+    this.active = const {},
+    this.paused = const {},
+  });
 
   double? progressFor(String taskId) => progress[taskId];
   bool isActive(String taskId) => active.contains(taskId);
+  bool isPaused(String taskId) => paused.contains(taskId);
 }
 
 final downloadProgressProvider =
@@ -242,22 +248,31 @@ class DownloadProgressNotifier extends Notifier<DownloadProgress> {
     final id = update.task.taskId;
     final progress = Map<String, double>.from(state.progress);
     final active = Set<String>.from(state.active);
+    final paused = Set<String>.from(state.paused);
 
     if (update is TaskProgressUpdate) {
-      if (update.progress > 0 && update.progress < 1) {
+      // Only react to real progress (0..1); negative values are paused/failed/
+      // cancelled sentinels handled by the status update below. Keep the last
+      // progress on pause so the UI can show where a paused download stopped.
+      if (update.progress >= 0 && update.progress < 1) {
         progress[id] = update.progress;
         active.add(id);
-      } else {
-        progress.remove(id);
+        paused.remove(id);
       }
     } else if (update is TaskStatusUpdate) {
       switch (update.status) {
         case TaskStatus.enqueued:
         case TaskStatus.running:
           active.add(id);
+          paused.remove(id);
+          break;
+        case TaskStatus.paused:
+          active.remove(id);
+          paused.add(id);
           break;
         case TaskStatus.complete:
           active.remove(id);
+          paused.remove(id);
           progress.remove(id);
           final bookId = bookIdOf(update.task);
           if (bookId != null) {
@@ -268,15 +283,15 @@ class DownloadProgressNotifier extends Notifier<DownloadProgress> {
         case TaskStatus.failed:
         case TaskStatus.canceled:
         case TaskStatus.notFound:
-        case TaskStatus.paused:
           active.remove(id);
+          paused.remove(id);
           progress.remove(id);
           break;
         default:
           break;
       }
     }
-    state = DownloadProgress(progress: progress, active: active);
+    state = DownloadProgress(progress: progress, active: active, paused: paused);
   }
 }
 
