@@ -77,6 +77,16 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          _sectionLabel(context, 'Downloads'),
+          SwitchListTile(
+            secondary: Icon(PhosphorIcons.downloadSimple),
+            title: const Text('Download over Wi-Fi only'),
+            subtitle: const Text('Avoid using mobile data for downloads'),
+            value: settings.wifiOnlyDownloads,
+            onChanged: (v) =>
+                ref.read(settingsProvider.notifier).setWifiOnlyDownloads(v),
+          ),
+          const Divider(),
           _sectionLabel(context, 'Storage'),
           ListTile(
             leading: Icon(PhosphorIcons.hardDrives),

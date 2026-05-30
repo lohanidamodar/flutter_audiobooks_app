@@ -1,0 +1,5 @@
+• New setting: download over Wi-Fi only, to avoid using mobile data
+• Pause, resume, and cancel individual chapter downloads
+• Download progress and completion show in your notifications
+
+Free classic audiobooks, beautifully read. Thanks for listening with Listora!

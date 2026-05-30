@@ -1,5 +1,6 @@
 import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/providers/providers.dart';
+import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/downloads_service.dart';
 import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/resources/models/models.dart';
@@ -127,6 +128,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
         directory: DownloadsService.directoryFor(widget.book.id),
         updates: Updates.statusAndProgress,
         allowPause: true,
+        requiresWiFi: ref.read(settingsProvider).wifiOnlyDownloads,
         retries: 3,
       );
 

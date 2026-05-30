@@ -12,15 +12,26 @@ class AppSettings {
   final ThemeMode themeMode;
   final double defaultSpeed;
 
+  /// When true, chapter downloads only start on an unmetered (Wi-Fi)
+  /// connection. Off by default so downloads work on any connection unless
+  /// the user opts in to save mobile data.
+  final bool wifiOnlyDownloads;
+
   const AppSettings({
     this.themeMode = ThemeMode.dark,
     this.defaultSpeed = 1.0,
+    this.wifiOnlyDownloads = false,
   });
 
-  AppSettings copyWith({ThemeMode? themeMode, double? defaultSpeed}) =>
+  AppSettings copyWith({
+    ThemeMode? themeMode,
+    double? defaultSpeed,
+    bool? wifiOnlyDownloads,
+  }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
         defaultSpeed: defaultSpeed ?? this.defaultSpeed,
+        wifiOnlyDownloads: wifiOnlyDownloads ?? this.wifiOnlyDownloads,
       );
 }
 
@@ -30,6 +41,7 @@ final settingsProvider =
 class SettingsNotifier extends Notifier<AppSettings> {
   static const _themeKey = 'settings.themeMode';
   static const speedKey = 'settings.defaultSpeed';
+  static const _wifiOnlyKey = 'settings.wifiOnlyDownloads';
 
   SharedPreferences get _prefs => ref.read(sharedPrefsProvider);
 
@@ -39,6 +51,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     return AppSettings(
       themeMode: ThemeMode.values[themeIndex.clamp(0, ThemeMode.values.length - 1)],
       defaultSpeed: _prefs.getDouble(speedKey) ?? 1.0,
+      wifiOnlyDownloads: _prefs.getBool(_wifiOnlyKey) ?? false,
     );
   }
 
@@ -50,5 +63,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
   Future<void> setDefaultSpeed(double speed) async {
     state = state.copyWith(defaultSpeed: speed);
     await _prefs.setDouble(speedKey, speed);
+  }
+
+  Future<void> setWifiOnlyDownloads(bool value) async {
+    state = state.copyWith(wifiOnlyDownloads: value);
+    await _prefs.setBool(_wifiOnlyKey, value);
   }
 }
