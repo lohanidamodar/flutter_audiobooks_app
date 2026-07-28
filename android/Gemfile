@@ -2,5 +2,11 @@ source "https://rubygems.org"
 
 gem "fastlane", "~> 2.225"
 
+# All Android build/publish logic lives in this plugin — the Fastfile in
+# this repo is only lane names.
+gem "fastlane-plugin-play_publisher",
+    git: "https://github.com/popupbits/fastlane-plugin-play_publisher",
+    tag: "v1.0.0"
+
 # Optional plugins — uncomment as needed
 # gem "fastlane-plugin-firebase_app_distribution"
