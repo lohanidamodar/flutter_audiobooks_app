@@ -8,27 +8,26 @@
 // ---------------------------------------------------------------------------
 // Device requirements
 // ---------------------------------------------------------------------------
-// Unlike the other apps here, Listora's content is not bundled:
+// Listora's content is not bundled: Home lists the LibriVox catalogue, so the
+// device NEEDS NETWORK. Without it this run fails at the first assertion
+// rather than shooting an empty list.
 //
-//   * Home lists the LibriVox catalogue, so the device NEEDS NETWORK. Without
-//     it this run fails at the first assertion rather than shooting a spinner.
-//   * Library only shows books that have been downloaded on THIS device. Run
-//     the app by hand once and download a title before capturing, or the
-//     Library screenshot is an empty state.
-//
-// The Library shot is skipped (not faked) when nothing is downloaded — see the
-// guard below. A missing screenshot is recoverable; an uploaded screenshot of
-// an empty library is worse than none.
+// Downloads are NOT required. LibraryPage renders `libraryProvider` plus
+// `favoriteBooksProvider`, and only shows its empty state when both are empty
+// — so the test favourites a book from the detail screen on the way past,
+// which populates Library without downloading anything.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:audiobooks/main.dart';
 import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
+import 'package:audiobooks/widgets/book_cards.dart';
 
 import 'screenshot_helper.dart';
 
@@ -57,8 +56,8 @@ void main() {
     await screenshots.prepare(tester);
 
     // 1. Home — the LibriVox catalogue. Requires network.
-    final anyBook = find.byType(Card);
-    if (anyBook.evaluate().isEmpty) {
+    final books = find.byType(BookPosterCard);
+    if (books.evaluate().isEmpty) {
       fail(
         'No books rendered on Home. Listora browses the LibriVox catalogue '
         'over the network — check the device is online before capturing.',
@@ -66,26 +65,26 @@ void main() {
     }
     await screenshots.take('home');
 
-    // 2. Book detail — description, chapter list, download controls.
-    await tester.tap(anyBook.first);
+    // 2. Book detail — description, chapters, download and play controls.
+    await tester.tap(books.first);
     await tester.pumpAndSettle(const Duration(seconds: 4));
     await screenshots.take('book_detail');
-    await _goBack(tester);
 
-    // 3. Library — only meaningful with downloads present.
-    await _tapTab(tester, 1);
-    final hasDownloads = find.byType(Card).evaluate().isNotEmpty;
-    if (hasDownloads) {
-      await screenshots.take('library');
-    } else {
-      // ignore: avoid_print
-      print(
-        '[screenshots] Library is empty — skipping that shot. Download a book '
-        'on this device and re-run to include it.',
-      );
+    // Favourite this title so Library has something to show. No download
+    // needed — favourites alone populate it.
+    final heart = find.byIcon(PhosphorIcons.heart);
+    if (heart.evaluate().isNotEmpty) {
+      await tester.tap(heart.first);
+      await tester.pumpAndSettle(const Duration(seconds: 2));
     }
 
-    screenshots.assertCaptured(minimum: 2);
+    await _goBack(tester);
+
+    // 3. Library — saved and favourited books.
+    await _tapTab(tester, 1);
+    await screenshots.take('library');
+
+    screenshots.assertCaptured(minimum: 3);
   });
 }
 
