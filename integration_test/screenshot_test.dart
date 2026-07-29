@@ -21,7 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:audiobooks/main.dart';
