@@ -7,10 +7,10 @@ import 'package:audiobooks/resources/playback_bookmarks.dart';
 import 'package:audiobooks/resources/repository.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 /// Stateless data/service singletons, owned by the ProviderScope.

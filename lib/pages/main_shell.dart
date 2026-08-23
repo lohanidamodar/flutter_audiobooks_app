@@ -1,10 +1,10 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/pages/home_page.dart';
 import 'package:audiobooks/pages/library_page.dart';
 import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});

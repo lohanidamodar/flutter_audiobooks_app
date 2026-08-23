@@ -6,12 +6,19 @@ publish_to: 'none'
 version: 1.0.0+4
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
-  flutter: '>=3.24.0'
+  # material_ui 1.x needs the release that moved Material out of the SDK.
+  sdk: ^3.12.0
+  flutter: '>=3.44.0'
 
 dependencies:
   flutter:
     sdk: flutter
+
+  # Material, decoupled from the Flutter SDK. package:flutter/material.dart is
+  # frozen as of Flutter 3.44 and declares types unrelated to these ones — see
+  # test/no_frozen_material_test.dart. material_ui re-exports
+  # package:flutter/widgets.dart, so the widgets layer keeps working.
+  material_ui: ^1.0.1
 
   # Audio playback (with lock-screen / notification controls)
   just_audio: ^0.10.5
@@ -26,7 +33,7 @@ dependencies:
       url: https://github.com/lohanidamodar/popup-bits-design-system
       ref: main
       path: packages/popup_bits_design
-  google_fonts: ^6.2.1
+  google_fonts: ^8.2.1
 
   # Data & persistence
   http: ^1.2.2
@@ -41,6 +48,9 @@ dependencies:
   url_launcher: ^6.3.2
   share_plus: ^13.1.0
   package_info_plus: ^10.1.0
+  # Depended on for its 'Phosphor' font asset only. Its Dart API subclasses
+  # IconData, which no longer compiles; lib/icons/phosphor_icons.dart declares
+  # the codepoints we use as plain const IconData instead.
   flutter_phosphor_icons: ^0.0.1+6
 
 dev_dependencies:

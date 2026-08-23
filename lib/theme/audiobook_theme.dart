@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:popup_bits_design/popup_bits_design.dart';
+
+import 'google_fonts_text_theme.dart';
 
 class AudiobookTheme {
   static const product = PbProductTheme(
@@ -45,7 +47,7 @@ class AudiobookTheme {
   /// Layer the display serif onto the large type slots; keep popup_bits'
   /// Nunito for everything body/label-sized.
   static ThemeData _decorate(ThemeData base) {
-    final fraunces = GoogleFonts.frauncesTextTheme(base.textTheme);
+    final fraunces = googleFontsTextTheme(base.textTheme, GoogleFonts.fraunces);
     return base.copyWith(
       textTheme: base.textTheme.copyWith(
         displayLarge: fraunces.displayLarge?.copyWith(letterSpacing: -0.5),

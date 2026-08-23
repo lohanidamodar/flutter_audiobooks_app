@@ -17,11 +17,11 @@
 // — so the test favourites a book from the detail screen on the way past,
 // which populates Library without downloading anything.
 
-import 'package:flutter/material.dart';
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:audiobooks/main.dart';

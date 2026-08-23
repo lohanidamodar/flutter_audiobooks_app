@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:audiobooks/resources/duration_format.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class SeekBar extends StatefulWidget {
   final Duration duration;
