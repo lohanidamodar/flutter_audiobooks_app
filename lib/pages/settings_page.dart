@@ -1,8 +1,8 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/providers/settings_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';

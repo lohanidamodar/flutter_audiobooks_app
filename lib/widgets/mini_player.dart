@@ -1,10 +1,10 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:material_ui/material_ui.dart';
 
 class MiniPlayer extends ConsumerWidget {
   final void Function(Book book)? onTap;

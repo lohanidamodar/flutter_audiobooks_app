@@ -1,9 +1,9 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Rounded square cover with a graceful fallback.
 class BookCover extends StatelessWidget {

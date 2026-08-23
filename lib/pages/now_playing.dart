@@ -1,3 +1,4 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/providers/sleep_timer_provider.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
@@ -5,10 +6,9 @@ import 'package:audiobooks/resources/duration_format.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:audiobooks/widgets/immersive_scrubber.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Darkens a cover colour so the gradient top stays readable for white text
 /// even when the cover is pale (many LibriVox covers are near-white).

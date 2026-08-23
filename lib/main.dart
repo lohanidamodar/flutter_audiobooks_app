@@ -3,8 +3,8 @@ import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:background_downloader/background_downloader.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
@@ -38,6 +38,18 @@ class AudioBooksApp extends ConsumerWidget {
       darkTheme: AudiobookTheme.dark(),
       themeMode: themeMode,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        // Bridges packages that still import package:flutter/material.dart —
+        // google_fonts, cached_network_image/octo_image, just_audio_background
+        // — so their widgets can resolve a legacy Theme and
+        // MaterialLocalizations inside this material_ui tree. Without it they
+        // throw at runtime.
+        // Deprecated upstream on purpose: it is a migration utility, and it
+        // stays necessary for exactly as long as our dependencies keep
+        // importing frozen Material. Drop it once they no longer do.
+        // ignore: deprecated_member_use
+        return MaterialUiCompatibilityBridge(child: child!);
+      },
       home: const MainShell(),
     );
   }

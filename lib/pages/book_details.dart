@@ -1,3 +1,4 @@
+import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/pages/now_playing.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/providers/settings_provider.dart';
@@ -9,9 +10,8 @@ import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:audiobooks/widgets/book_cards.dart';
 import 'package:audiobooks/widgets/mini_player.dart';
 import 'package:background_downloader/background_downloader.dart';
-import 'package:flutter/material.dart';
-import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 class DetailPage extends ConsumerStatefulWidget {
   final Book book;
