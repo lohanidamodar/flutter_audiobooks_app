@@ -1,0 +1,5 @@
+{
+  "01_home":        { "headline": "Thousands of free audiobooks", "subhead": "LibriVox classics, read by volunteers" },
+  "02_book_detail": { "headline": "Every classic, read aloud",    "subhead": "Stream, download, resume anytime" },
+  "03_library":     { "headline": "Your library, offline-ready",  "subhead": "Favourites and downloads in one place" }
+}

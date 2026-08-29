@@ -116,3 +116,7 @@ android/fastlane/README.md
 ios/fastlane/report.xml
 ios/fastlane/README.md
 videos/
+
+# Screenshot capture + moksha render working dirs
+/screenshots_work/
+/out/

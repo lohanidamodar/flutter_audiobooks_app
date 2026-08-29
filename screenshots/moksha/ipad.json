@@ -1,0 +1,31 @@
+{
+  "assets": [
+    {
+      "assetType": "ipad-screenshot", "sizeId": "ipad-13", "layout": "hero-center", "phoneFrame": "ipad",
+      "background": { "type": "gradient", "id": "indigo-dream" },
+      "textOverlays": [
+        { "text": "Thousands of free audiobooks", "anchor": "top-center", "fontSize": 0.058, "weight": 800 },
+        { "text": "LibriVox classics, read by volunteers", "anchor": "top-center", "offsetY": 0.085, "fontSize": 0.032, "weight": 500 }
+      ],
+      "screenshot": "01_home.png", "filename": "01_home.png"
+    },
+    {
+      "assetType": "ipad-screenshot", "sizeId": "ipad-13", "layout": "tilt-left", "phoneFrame": "ipad",
+      "background": { "type": "gradient", "id": "indigo-dream" },
+      "textOverlays": [
+        { "text": "Every classic, read aloud", "anchor": "top-center", "fontSize": 0.058, "weight": 800 },
+        { "text": "Stream, download, resume anytime", "anchor": "top-center", "offsetY": 0.085, "fontSize": 0.032, "weight": 500 }
+      ],
+      "screenshot": "02_book_detail.png", "filename": "02_book_detail.png"
+    },
+    {
+      "assetType": "ipad-screenshot", "sizeId": "ipad-13", "layout": "tilt-right", "phoneFrame": "ipad",
+      "background": { "type": "gradient", "id": "indigo-dream" },
+      "textOverlays": [
+        { "text": "Your library, offline-ready", "anchor": "top-center", "fontSize": 0.058, "weight": 800 },
+        { "text": "Favourites and downloads in one place", "anchor": "top-center", "offsetY": 0.085, "fontSize": 0.032, "weight": 500 }
+      ],
+      "screenshot": "03_library.png", "filename": "03_library.png"
+    }
+  ]
+}
