@@ -1,0 +1,1 @@
+Listora is a free audiobook player for public-domain LibriVox recordings served from the Internet Archive. No login or account is required — open the app and browse or search thousands of titles. Audio streams over HTTPS from archive.org; chapters can be downloaded for offline playback. There are no in-app purchases and no advertisements.

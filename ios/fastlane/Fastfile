@@ -1,0 +1,436 @@
+# ---------------------------------------------------------------
+# Fastfile — iOS build & deployment lanes
+# ---------------------------------------------------------------
+# This file is designed to be project-agnostic. All project-specific
+# values (bundle ID, app name, workspace, scheme) are read from
+# environment variables so the same file can be dropped into any
+# Flutter project.
+#
+# Required env vars:
+#   APP_IDENTIFIER                 — iOS bundle identifier (e.g. com.example.app)
+#   APP_STORE_CONNECT_KEY_ID       — App Store Connect API key ID
+#   APP_STORE_CONNECT_ISSUER_ID    — App Store Connect issuer ID
+#   APP_STORE_CONNECT_KEY_CONTENT  — Base64-encoded .p8 private key content
+#   MATCH_GIT_URL                  — SSH URL of private match certificates repo
+#   MATCH_PASSWORD                 — Passphrase for the match repo
+#   TEAM_ID                        — Apple Developer Team ID
+#
+# Optional env vars (sensible Flutter defaults applied if unset):
+#   APP_NAME         — Output IPA name (default: "Runner")
+#   IOS_WORKSPACE    — Xcode workspace filename (default: "Runner.xcworkspace")
+#   IOS_SCHEME       — Xcode scheme name (default: "Runner")
+# ---------------------------------------------------------------
+
+default_platform(:ios)
+
+# ------------------------------------------------------------------
+# Helpers: resolve project-agnostic values from the environment
+# ------------------------------------------------------------------
+def app_identifier_value
+  value = ENV["APP_IDENTIFIER"]
+  UI.user_error!("APP_IDENTIFIER env var must be set (iOS bundle ID)") if value.nil? || value.empty?
+  value
+end
+
+def team_id_value
+  value = ENV["TEAM_ID"]
+  UI.user_error!("TEAM_ID env var must be set (Apple Developer Team ID)") if value.nil? || value.empty?
+  value
+end
+
+def ios_workspace
+  # Default "Runner.xcworkspace" is the Flutter convention; override
+  # with IOS_WORKSPACE if the project uses something else.
+  ENV["IOS_WORKSPACE"] || "Runner.xcworkspace"
+end
+
+def ios_scheme
+  # Default "Runner" is the Flutter convention; override with IOS_SCHEME.
+  ENV["IOS_SCHEME"] || "Runner"
+end
+
+def ipa_output_name
+  # Strip any ".ipa" the user may have added and always append it here.
+  base = (ENV["APP_NAME"] || "Runner").sub(/\.ipa\z/i, "")
+  "#{base}.ipa"
+end
+
+def appstore_profile_name(app_id)
+  "match AppStore #{app_id}"
+end
+
+def appstore_export_options(app_id)
+  {
+    signingStyle: "manual",
+    provisioningProfiles: {
+      app_id => appstore_profile_name(app_id),
+    },
+  }
+end
+
+platform :ios do
+  # ------------------------------------------------------------------
+  # Helper: Build the App Store Connect API key from environment vars
+  # ------------------------------------------------------------------
+  # ------------------------------------------------------------------
+  # Helper: Treat READY_FOR_REVIEW versions as editable
+  #
+  # spaceship's get_edit_app_store_version only accepts a version whose
+  # appVersionState is one of PREPARE_FOR_SUBMISSION, DEVELOPER_REJECTED,
+  # REJECTED, METADATA_REJECTED, WAITING_FOR_REVIEW or INVALID_BINARY.
+  # A version sitting at "Ready to Submit" reports READY_FOR_REVIEW, which
+  # is absent from that list (still true as of fastlane 2.238.0), so deliver
+  # decides there is nothing to edit and tries to CREATE a version instead.
+  # App Store Connect then rejects that with either "You cannot create a new
+  # version of the App in the current state" or "The version number has been
+  # previously used" — even though the version is perfectly editable in the
+  # web UI.
+  # ------------------------------------------------------------------
+  desc "Allow deliver to edit versions in the READY_FOR_REVIEW state"
+  private_lane :allow_ready_for_review_edits do
+    require "spaceship"
+
+    Spaceship::ConnectAPI::App.class_eval do
+      def get_edit_app_store_version(client: nil, platform: nil, includes: Spaceship::ConnectAPI::AppStoreVersion::ESSENTIAL_INCLUDES)
+        client ||= Spaceship::ConnectAPI
+        platform ||= Spaceship::ConnectAPI::Platform::IOS
+        states = Spaceship::ConnectAPI::AppStoreVersion::AppVersionState
+        filter = {
+          appVersionState: [
+            states::PREPARE_FOR_SUBMISSION,
+            states::DEVELOPER_REJECTED,
+            states::REJECTED,
+            states::METADATA_REJECTED,
+            states::WAITING_FOR_REVIEW,
+            states::INVALID_BINARY,
+            states::READY_FOR_REVIEW,
+          ].join(","),
+          platform: platform,
+        }
+
+        get_app_store_versions(client: client, filter: filter, includes: includes)
+          .sort_by { |v| Gem::Version.new(v.version_string) }
+          .last
+      end
+    end
+
+    UI.message("Patched spaceship to treat READY_FOR_REVIEW versions as editable")
+  end
+
+  desc "Create App Store Connect API key object from env vars"
+  private_lane :load_asc_api_key do
+    allow_ready_for_review_edits
+
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_KEY_CONTENT"],  # base64-encoded .p8 key
+      is_key_content_base64: true,
+      in_house: false,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Helper: Sync signing via match
+  # ------------------------------------------------------------------
+  desc "Sync code signing certificates and profiles via match"
+  private_lane :sync_signing do
+    load_asc_api_key
+
+    # On CI there is no unlocked login keychain, so match has nowhere to
+    # import the signing certificate without a UI prompt ("There are no local
+    # code signing identities found"). setup_ci creates a temporary unlocked
+    # keychain and makes it the default.
+    setup_ci if is_ci
+
+    match(
+      type: "appstore",
+      readonly: is_ci,  # CI should never create new profiles
+      app_identifier: app_identifier_value,
+      git_url: ENV["MATCH_GIT_URL"],
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Helper: Point the Runner target at the match profile
+  # ------------------------------------------------------------------
+  # The project archives with automatic signing, which works locally (Xcode
+  # is signed in) but fails on CI with "No profiles for '<bundle id>' were
+  # found". These settings must be scoped to the Runner target — passing them
+  # as xcargs applies them to every pod and Swift package target too, and
+  # framework targets fail with "does not support provisioning profiles".
+  desc "Apply manual signing settings to the Runner target"
+  private_lane :configure_signing do |options|
+    update_code_signing_settings(
+      path: "Runner.xcodeproj",
+      use_automatic_signing: false,
+      team_id: team_id_value,
+      code_sign_identity: "Apple Distribution",
+      profile_name: appstore_profile_name(options[:app_id]),
+      targets: ["Runner"],
+      build_configurations: ["Release"],
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Beta: Build + upload to TestFlight
+  # ------------------------------------------------------------------
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    sync_signing
+
+    app_id = app_identifier_value
+
+    configure_signing(app_id: app_id)
+
+    # Build the Flutter-generated Xcode project.
+    # Workspace/scheme default to the Flutter standard ("Runner.xcworkspace"/"Runner")
+    # but can be overridden via IOS_WORKSPACE / IOS_SCHEME env vars.
+    build_app(
+      workspace: ios_workspace,
+      scheme: ios_scheme,
+      export_method: "app-store",
+      export_options: appstore_export_options(app_id),
+      output_directory: "../build/ios",
+      output_name: ipa_output_name,
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Release: Build + upload to App Store for review
+  # ------------------------------------------------------------------
+  desc "Build and upload to App Store"
+  lane :release do
+    sync_signing
+
+    app_id = app_identifier_value
+
+    configure_signing(app_id: app_id)
+
+    build_app(
+      workspace: ios_workspace,
+      scheme: ios_scheme,
+      export_method: "app-store",
+      export_options: appstore_export_options(app_id),
+      output_directory: "../build/ios",
+      output_name: ipa_output_name,
+    )
+
+    upload_to_app_store(
+      skip_screenshots: true,
+      skip_metadata: false,
+      metadata_path: "./fastlane/metadata",
+      force: true,  # skip HTML preview confirmation
+      ignore_language_directory_validation: true,
+      precheck_include_in_app_purchases: false,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Fetch Apple account info via Spaceship (used by ios_setup_env.sh)
+  # ------------------------------------------------------------------
+  desc "Fetch ITC Team ID and verify app in App Store Connect"
+  lane :fetch_apple_info do
+    require "spaceship"
+
+    apple_id = ENV["APPLE_ID"]
+    app_id   = ENV["APP_IDENTIFIER"]
+
+    UI.user_error!("APPLE_ID env var is required") unless apple_id
+    UI.user_error!("APP_IDENTIFIER env var is required") unless app_id
+
+    UI.message("Authenticating as #{apple_id} ...")
+    Spaceship::ConnectAPI.login(apple_id)
+
+    # Fetch ITC Team ID
+    itc_team_id = ""
+    begin
+      tunes_client = Spaceship::Tunes.client rescue nil
+      if tunes_client && tunes_client.teams && tunes_client.teams.length > 0
+        team = tunes_client.teams.first
+        itc_team_id = team["contentProvider"]["contentProviderId"].to_s
+        UI.success("ITC_TEAM_ID: #{itc_team_id}")
+      end
+    rescue => e
+      UI.important("Could not fetch ITC Team ID: #{e.message}")
+    end
+
+    # Verify app exists
+    begin
+      app = Spaceship::ConnectAPI::App.find(app_id)
+      if app
+        UI.success("App '#{app_id}' found in App Store Connect")
+      else
+        UI.important("App '#{app_id}' NOT found in App Store Connect")
+      end
+    rescue => e
+      UI.important("Could not verify app: #{e.message}")
+    end
+
+    # Output for parsing
+    puts "ITC_TEAM_ID=#{itc_team_id}"
+  end
+
+  # ------------------------------------------------------------------
+  # Build only (no upload) — useful for local testing
+  # ------------------------------------------------------------------
+  desc "Build IPA only (no upload)"
+  lane :build do
+    sync_signing
+
+    app_id = app_identifier_value
+
+    configure_signing(app_id: app_id)
+
+    build_app(
+      workspace: ios_workspace,
+      scheme: ios_scheme,
+      export_method: "app-store",
+      export_options: appstore_export_options(app_id),
+      output_directory: "../build/ios",
+      output_name: ipa_output_name,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Metadata: Upload only metadata to App Store (no build)
+  # ------------------------------------------------------------------
+  desc "Upload only metadata to App Store (no build)"
+  lane :upload_metadata do
+    load_asc_api_key
+
+    deliver(
+      app_identifier: app_identifier_value,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      metadata_path: "./fastlane/metadata",
+      force: true,
+      precheck_include_in_app_purchases: false,
+      ignore_language_directory_validation: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Screenshots: Upload only screenshots to App Store (no build)
+  # ------------------------------------------------------------------
+  desc "Upload only screenshots to App Store (no build)"
+  lane :upload_screenshots do
+    load_asc_api_key
+
+    deliver(
+      app_identifier: app_identifier_value,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      screenshots_path: "./fastlane/screenshots",
+      overwrite_screenshots: true,  # clear the existing set first, else deliver no-ops
+      force: true,
+      precheck_include_in_app_purchases: false,
+      # screenshots/ also holds raw/ and fonts/, which are not locale folders
+      ignore_language_directory_validation: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Listing: Upload metadata + screenshots to App Store (no build)
+  # ------------------------------------------------------------------
+  desc "Upload metadata + screenshots to App Store (no build)"
+  lane :upload_listing do
+    load_asc_api_key
+
+    deliver(
+      app_identifier: app_identifier_value,
+      skip_binary_upload: true,
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots",
+      overwrite_screenshots: true,  # clear the existing set first, else deliver no-ops
+      force: true,
+      precheck_include_in_app_purchases: false,
+      ignore_language_directory_validation: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Download: Fetch current metadata from App Store
+  # ------------------------------------------------------------------
+  desc "Download current metadata from App Store"
+  lane :download_metadata do
+    load_asc_api_key
+
+    deliver(
+      app_identifier: app_identifier_value,
+      metadata_path: "./fastlane/metadata",
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      run_precheck_before_submit: false,
+      force: true,
+      ignore_language_directory_validation: true,
+    )
+  end
+
+  # ------------------------------------------------------------------
+  # Screenshots: Stage raw integration-test screenshots into the locale
+  # folders deliver expects, then frame them with frameit.
+  #
+  # take_screenshots.sh writes to  fastlane/screenshots/raw/<Device>/NN_name.png
+  # deliver expects                fastlane/screenshots/<locale>/*.png
+  #
+  # Screenshots from every device size live in the same locale folder —
+  # deliver derives the App Store display family from the image
+  # dimensions, so the device name only needs to keep filenames unique.
+  # ------------------------------------------------------------------
+  desc "Stage raw iOS screenshots into locale folders (no framing)"
+  lane :stage_screenshots do
+    # Lane bodies run with the fastlane folder as the working directory.
+    raw_dir = "screenshots/raw"
+    UI.user_error!("No raw screenshots found in ios/fastlane/#{raw_dir} — run ./scripts/take_screenshots.sh ios first") unless Dir.exist?(raw_dir)
+
+    require "fileutils"
+
+    # Only locales the App Store actually supports. Nepali (ne-NP) is NOT an
+    # App Store localisation, so it is intentionally absent here.
+    locales = ["en-US"]
+
+    raw_files = Dir.glob(File.join(raw_dir, "*", "*.png")).reject { |f| f.end_with?("_framed.png") }.sort
+    UI.user_error!("No PNGs under ios/fastlane/#{raw_dir}/<Device>/") if raw_files.empty?
+
+    locales.each do |locale|
+      locale_dir = File.join("screenshots", locale)
+      FileUtils.mkdir_p(locale_dir)
+
+      # Clear previously staged/framed PNGs so removed screens don't linger.
+      Dir.glob(File.join(locale_dir, "*.png")).each { |f| File.delete(f) }
+
+      raw_files.each do |src|
+        device = File.basename(File.dirname(src))
+        dest = File.join(locale_dir, "#{device}-#{File.basename(src)}")
+        FileUtils.cp(src, dest)
+      end
+
+      UI.success("Staged #{raw_files.count} screenshots into ios/fastlane/#{locale_dir}/")
+    end
+  end
+
+  desc "Stage and frame raw iOS screenshots using frameit"
+  lane :screenshots do
+    stage_screenshots
+
+    # frameit needs ImageMagick: brew install imagemagick
+    #
+    # Point it at the locale folder, NOT the screenshots root: frameit's
+    # create_config looks for Framefile.json at ../ and ../../ of each
+    # screenshot (then jumps to ../../../../), so framing raw/<Device>/*.png
+    # silently finds no config and falls back to plain frames with no titles.
+    # Framing en-US/ also keeps frameit out of raw/.
+    #
+    # It writes <name>_framed.png next to each source; deliver then prefers
+    # the framed files and skips the unframed ones automatically.
+    frameit(
+      path: "./fastlane/screenshots/en-US",
+      white: true,
+    )
+  end
+end

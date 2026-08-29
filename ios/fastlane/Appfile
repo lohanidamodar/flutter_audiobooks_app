@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------
+# Appfile — Fastlane configuration (iOS)
+# ---------------------------------------------------------------
+# All sensitive values are read from environment variables.
+# Set these in Codemagic's Environment Variables UI or in a
+# local .env file (never commit secrets to the repo).
+# ---------------------------------------------------------------
+
+app_identifier(ENV["APP_IDENTIFIER"])
+
+# Apple ID email associated with your Apple Developer account
+apple_id(ENV["APPLE_ID"])
+
+# Apple Developer Portal Team ID (10-character string)
+team_id(ENV["TEAM_ID"])
+
+# App Store Connect Team ID (numeric, find it in App Store Connect -> Users -> your user)
+itc_team_id(ENV["ITC_TEAM_ID"])
+
+# App Store Connect API Key — used for non-interactive authentication
+# These are set as env vars and consumed by the api_key_path or
+# inline via app_store_connect_api_key in the Fastfile.

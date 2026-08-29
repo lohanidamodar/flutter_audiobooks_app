@@ -1,0 +1,30 @@
+# ---------------------------------------------------------------
+# Matchfile — Fastlane match configuration for code signing
+# ---------------------------------------------------------------
+# match stores iOS certificates and provisioning profiles in a
+# private git repo so every CI machine (and teammate) uses the
+# same signing identity.
+# ---------------------------------------------------------------
+
+# URL of the private git repo that stores certificates & profiles.
+# Example: git@github.com:your-org/ios-certificates.git
+git_url(ENV["MATCH_GIT_URL"])
+
+# Storage mode — "git" is the default and most common.
+storage_mode("git")
+
+# Default signing type: "appstore", "adhoc", "development", or "enterprise"
+type("appstore")
+
+# Bundle identifier(s) to provision — read from env
+app_identifier([ENV["APP_IDENTIFIER"]].compact)
+
+# Apple Developer Portal team
+team_id(ENV["TEAM_ID"])
+
+# Optional: branch inside the certificates repo (defaults to "master")
+# git_branch("main")
+
+# Optional: read-only mode on CI — prevents match from creating
+# new certs/profiles if they don't already exist.
+# readonly(true)

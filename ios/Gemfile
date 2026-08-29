@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.225"
+
+# gym shells out to xcpretty to format xcodebuild output; without it the
+# archive step dies with "sh: xcpretty: command not found" (exit 127).
+gem "xcpretty"

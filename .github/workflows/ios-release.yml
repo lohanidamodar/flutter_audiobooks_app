@@ -1,0 +1,153 @@
+# Publish Listora to TestFlight / the App Store.
+#
+# Builds a signed IPA and uploads it through the Fastlane lanes in
+# `ios/fastlane/`. Manual only — there is no push trigger.
+#
+# Repository secrets (Settings → Secrets and variables → Actions). Org-level
+# secrets do NOT reach private repos on the free plan, so set these per-repo:
+#
+#   APP_IDENTIFIER                 iOS bundle id (com.popupbits.listora)
+#   APPLE_ID                       Apple Developer account email
+#   TEAM_ID                        Apple Developer Team ID (10 chars)
+#   ITC_TEAM_ID                    App Store Connect team id (numeric)
+#   APP_STORE_CONNECT_KEY_ID       App Store Connect API key id
+#   APP_STORE_CONNECT_ISSUER_ID    App Store Connect issuer id
+#   APP_STORE_CONNECT_KEY_CONTENT  Base64-encoded .p8 private key
+#   MATCH_GIT_URL                  SSH URL of the private certificates repo
+#   MATCH_PASSWORD                 Passphrase the certificates repo is encrypted with
+#   MATCH_DEPLOY_KEY               Private half of a read-only deploy key on that
+#                                  repo, used to clone it
+#
+# APPLE_ID and ITC_TEAM_ID only matter if fastlane falls back to Apple ID
+# login. These lanes authenticate with the App Store Connect API key, so both
+# are optional.
+
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Where to send the build (or which listing-only lane to run)"
+        required: true
+        type: choice
+        default: beta
+        options:
+          - beta                # TestFlight
+          - release             # App Store review
+          - build               # signed IPA only, no upload
+          - upload_metadata     # store listing text only — no build
+          - upload_screenshots  # screenshots only — no build
+          - upload_listing      # metadata + screenshots — no build
+      build_number:
+        description: "Override the build number (TestFlight rejects a re-upload at the same one). Blank uses pubspec.yaml. Ignored by the listing-only lanes."
+        required: false
+        type: string
+      app_version:
+        description: "App Store version the listing-only lanes should edit (DELIVER_APP_VERSION). Blank lets deliver find the editable version."
+        required: false
+        type: string
+
+jobs:
+  publish:
+    name: App Store Connect — ${{ inputs.release_type }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    # The listing-only lanes (upload_metadata / upload_screenshots /
+    # upload_listing) talk to the App Store Connect API and nothing else:
+    # no signing, no Flutter toolchain, no build. Every build-related step
+    # below is gated on this.
+
+    env:
+      # Read by ios/fastlane/{Appfile,Matchfile,Fastfile}.
+      APP_IDENTIFIER: ${{ secrets.APP_IDENTIFIER }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_KEY_CONTENT }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      # Keep fastlane's output readable in the Actions log.
+      FASTLANE_SKIP_UPDATE_CHECK: "1"
+      FASTLANE_HIDE_CHANGELOG: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # match clones the certificates repo over SSH using a read-only deploy
+      # key scoped to that repo alone. IdentitiesOnly stops ssh offering any
+      # other key the runner might pick up.
+      - name: Authorise the certificates repo
+        if: contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        env:
+          MATCH_DEPLOY_KEY: ${{ secrets.MATCH_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$MATCH_DEPLOY_KEY" > ~/.ssh/match_ed25519
+          chmod 600 ~/.ssh/match_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          cat >> ~/.ssh/config <<'SSHCONFIG'
+          Host github.com
+            IdentityFile ~/.ssh/match_ed25519
+            IdentitiesOnly yes
+          SSHCONFIG
+
+      - name: Set up Flutter
+        if: contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        uses: subosito/flutter-action@v2
+        with:
+          # Pinned to the version we develop against locally — bump in lockstep
+          # with the Android release workflow.
+          flutter-version: "3.47.1"
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: ios
+
+      - name: Install Flutter dependencies
+        if: contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        run: flutter pub get
+
+      - name: Run tests
+        if: contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        run: flutter test
+
+      # --config-only writes Generated.xcconfig (including the build-number
+      # override), registers plugins and installs pods WITHOUT compiling —
+      # fastlane's build_app archives next and that xcodebuild run compiles
+      # everything anyway via xcode_backend.sh, so a full build here would be
+      # paid twice. Trade-off: a compile error now surfaces in the gym log
+      # instead of failing fast here.
+      - name: Prepare Flutter iOS build
+        if: contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        run: |
+          if [ -n "${{ inputs.build_number }}" ]; then
+            flutter build ios --release --no-codesign --config-only --build-number="${{ inputs.build_number }}"
+          else
+            flutter build ios --release --no-codesign --config-only
+          fi
+
+      - name: Run Fastlane ${{ inputs.release_type }}
+        working-directory: ios
+        run: |
+          if [ -n "${{ inputs.app_version }}" ]; then
+            export DELIVER_APP_VERSION="${{ inputs.app_version }}"
+          fi
+          bundle exec fastlane ${{ inputs.release_type }}
+
+      - name: Upload IPA artifact
+        if: success() && contains(fromJSON('["beta","release","build"]'), inputs.release_type)
+        uses: actions/upload-artifact@v4
+        with:
+          name: listora-ios-${{ inputs.release_type }}
+          path: build/ios/*.ipa
+          if-no-files-found: warn
