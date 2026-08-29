@@ -131,6 +131,77 @@ platform :ios do
   end
 
   # ------------------------------------------------------------------
+  # Helper: Replace App Store screenshots via the App Store Connect API
+  #
+  # deliver uploads every screenshot then verifies it against the API; when
+  # ASC's async processing lags, deliver decides they are "missing" and
+  # re-uploads, leaving the set duplicated. This replaces the whole set
+  # through the API instead: for each locale + display type, delete what is
+  # there and upload each file exactly once, waiting for processing. It is
+  # project-agnostic — display type is derived from each PNG's pixel size.
+  # ------------------------------------------------------------------
+  desc "Replace App Store screenshots deterministically via the ASC API"
+  private_lane :sync_app_store_screenshots do
+    require "spaceship"
+    require "base64"
+    require "shellwords"
+
+    display_type_by_dimension = {
+      "1320x2868" => "APP_IPHONE_67", "1290x2796" => "APP_IPHONE_67",
+      "1284x2778" => "APP_IPHONE_67", "1242x2688" => "APP_IPHONE_67",
+      "2064x2752" => "APP_IPAD_PRO_3GEN_129", "2048x2732" => "APP_IPAD_PRO_3GEN_129",
+    }
+
+    allow_ready_for_review_edits
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key: Base64.decode64(ENV["APP_STORE_CONNECT_KEY_CONTENT"]),
+    )
+
+    app = Spaceship::ConnectAPI::App.find(app_identifier_value)
+    UI.user_error!("App #{app_identifier_value} not found on App Store Connect") unless app
+    version = app.get_edit_app_store_version
+    UI.user_error!("No editable App Store version to attach screenshots to") unless version
+
+    root = File.join(Dir.pwd, "screenshots")
+    Dir.children(root).sort.each do |locale|
+      locale_dir = File.join(root, locale)
+      next unless File.directory?(locale_dir)
+      next if %w[raw fonts].include?(locale)
+      pngs = Dir.glob(File.join(locale_dir, "*.png")).sort
+      next if pngs.empty?
+
+      loc = version.get_app_store_version_localizations.find { |l| l.locale == locale }
+      unless loc
+        UI.important("No #{locale} localization on the version — skipping its screenshots")
+        next
+      end
+
+      by_type = Hash.new { |h, k| h[k] = [] }
+      pngs.each do |f|
+        dim = `sips -g pixelWidth -g pixelHeight #{f.shellescape}`.scan(/pixel\w+: (\d+)/).flatten
+        dtype = display_type_by_dimension["#{dim[0]}x#{dim[1]}"]
+        if dtype.nil?
+          UI.important("No display type mapped for #{File.basename(f)} (#{dim[0]}x#{dim[1]}) — skipping")
+          next
+        end
+        by_type[dtype] << f
+      end
+
+      sets = loc.get_app_screenshot_sets
+      by_type.each do |dtype, files|
+        set = sets.find { |s| s.screenshot_display_type == dtype }
+        set ||= loc.create_app_screenshot_set(attributes: { screenshotDisplayType: dtype })
+        UI.message("#{locale}/#{dtype}: replacing #{set.app_screenshots.size} with #{files.size} screenshot(s)")
+        set.app_screenshots.each { |s| s.delete! rescue nil }
+        files.each { |f| set.upload_screenshot(path: f, wait_for_processing: true) }
+      end
+    end
+    UI.success("Screenshots synced via the App Store Connect API")
+  end
+
+  # ------------------------------------------------------------------
   # Helper: Sync signing via match
   # ------------------------------------------------------------------
   desc "Sync code signing certificates and profiles via match"
@@ -319,19 +390,7 @@ platform :ios do
   # ------------------------------------------------------------------
   desc "Upload only screenshots to App Store (no build)"
   lane :upload_screenshots do
-    load_asc_api_key
-
-    deliver(
-      app_identifier: app_identifier_value,
-      skip_binary_upload: true,
-      skip_metadata: true,
-      screenshots_path: "./fastlane/screenshots",
-      overwrite_screenshots: true,  # clear the existing set first, else deliver no-ops
-      force: true,
-      precheck_include_in_app_purchases: false,
-      # screenshots/ also holds raw/ and fonts/, which are not locale folders
-      ignore_language_directory_validation: true,
-    )
+    sync_app_store_screenshots
   end
 
   # ------------------------------------------------------------------
@@ -344,13 +403,14 @@ platform :ios do
     deliver(
       app_identifier: app_identifier_value,
       skip_binary_upload: true,
+      skip_screenshots: true,  # screenshots handled by sync_app_store_screenshots below
       metadata_path: "./fastlane/metadata",
-      screenshots_path: "./fastlane/screenshots",
-      overwrite_screenshots: true,  # clear the existing set first, else deliver no-ops
       force: true,
       precheck_include_in_app_purchases: false,
       ignore_language_directory_validation: true,
     )
+
+    sync_app_store_screenshots
   end
 
   # ------------------------------------------------------------------
