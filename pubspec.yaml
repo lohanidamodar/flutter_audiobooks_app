@@ -52,6 +52,7 @@ dependencies:
   # IconData, which no longer compiles; lib/icons/phosphor_icons.dart declares
   # the codepoints we use as plain const IconData instead.
   flutter_phosphor_icons: ^0.0.1+6
+  marionette_flutter: ^0.6.0
 
 dev_dependencies:
   flutter_test:

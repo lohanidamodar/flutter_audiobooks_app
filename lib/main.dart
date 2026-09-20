@@ -2,13 +2,26 @@ import 'package:audiobooks/pages/main_shell.dart';
 import 'package:audiobooks/providers/settings_provider.dart';
 import 'package:audiobooks/resources/audio_helper.dart';
 import 'package:audiobooks/theme/audiobook_theme.dart';
+// `kDebugMode` is not in the `show` list that widgets.dart re-exports from
+// foundation, and `material_ui` does not re-export foundation at all, so it
+// has to be imported explicitly.
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Marionette lets a coding agent drive the running app: read the widget
+  // tree, tap, type, screenshot. It replaces the binding, so it has to be
+  // the only one initialized — and only in debug, where a release build
+  // pays nothing for it.
+  if (kDebugMode) {
+    MarionetteBinding.ensureInitialized();
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
   final prefs = await SharedPreferences.getInstance();
   await initAudioService();
   await FileDownloader().trackTasks();
