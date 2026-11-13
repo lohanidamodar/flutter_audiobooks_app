@@ -123,6 +123,7 @@ class _TopBar extends StatelessWidget {
       children: [
         IconButton(
           icon: Icon(PhosphorIcons.caretDown, color: Colors.white),
+          tooltip: 'Close player',
           iconSize: 30,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
@@ -184,7 +185,8 @@ class _Cover extends StatelessWidget {
                 ),
               ],
             ),
-            child: ClipRRect(
+            child: ExcludeSemantics(
+                child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: artUrl != null
                   ? CachedNetworkImage(
@@ -195,7 +197,7 @@ class _Cover extends StatelessWidget {
                       placeholder: (_, __) => _coverFallback(),
                     )
                   : _coverFallback(),
-            ),
+            )),
           ),
         );
       },

@@ -20,29 +20,40 @@ class BookCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: CachedNetworkImage(
-        imageUrl: book.image,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => Container(
+    // Decorative: the title and author sit next to every cover.
+    return ExcludeSemantics(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: CachedNetworkImage(
+          imageUrl: book.image,
           width: size,
           height: size,
-          color: theme.colorScheme.surfaceContainerHighest,
-        ),
-        errorWidget: (_, __, ___) => Container(
-          width: size,
-          height: size,
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Icon(PhosphorIcons.bookOpen,
-              color: theme.colorScheme.primary, size: size * 0.3),
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            width: size,
+            height: size,
+            color: theme.colorScheme.surfaceContainerHighest,
+          ),
+          errorWidget: (_, __, ___) => Container(
+            width: size,
+            height: size,
+            color: theme.colorScheme.surfaceContainerHighest,
+            child: Icon(
+              PhosphorIcons.bookOpen,
+              color: theme.colorScheme.primary,
+              size: size * 0.3,
+            ),
+          ),
         ),
       ),
     );
   }
 }
+
+/// Height of a horizontal rail of [BookPosterCard]s. Grows with the text scale
+/// so the title and author lines never overflow at large font sizes.
+double posterRailHeight(BuildContext context, {double width = 140}) =>
+    width + 8 + MediaQuery.textScalerOf(context).scale(70);
 
 /// Poster-style card for rails and grids: cover + title + author.
 class BookPosterCard extends StatelessWidget {
@@ -63,61 +74,75 @@ class BookPosterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                BookCover(book: book, size: width, radius: 16),
-                if (showPlayBadge)
-                  Positioned(
-                    right: 8,
-                    bottom: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 6,
+    final label = book.author == null
+        ? book.title
+        : '${book.title}, ${book.author}';
+    return SizedBox(
+      width: width,
+      child: Stack(
+        children: [
+          Semantics(
+            button: true,
+            label: label,
+            excludeSemantics: true,
+            onTap: onTap,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: onTap,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      BookCover(book: book, size: width, radius: 16),
+                      if (showPlayBadge)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              PhosphorIcons.play,
+                              size: 20,
+                              color: theme.colorScheme.onPrimary,
+                            ),
                           ),
-                        ],
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  if (book.author != null)
+                    Text(
+                      book.author!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      child: Icon(PhosphorIcons.play,
-                          size: 20, color: theme.colorScheme.onPrimary),
                     ),
-                  ),
-                if (showFavorite)
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: _FavoriteHeart(book: book),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              book.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall,
-            ),
-            if (book.author != null)
-              Text(
-                book.author!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+          if (showFavorite)
+            Positioned(right: 0, top: 0, child: _FavoriteHeart(book: book)),
+        ],
       ),
     );
   }
@@ -132,9 +157,9 @@ class _FavoriteHeart extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isFav = ref.watch(favoritesProvider).contains(book.id);
-    return Material(
-      color: Colors.black45,
-      shape: const CircleBorder(),
+    // 48dp hit area around a 32dp visual circle.
+    return Tooltip(
+      message: isFav ? 'Remove from favourites' : 'Add to favourites',
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: () {
@@ -142,12 +167,24 @@ class _FavoriteHeart extends ConsumerWidget {
           ref.read(repositoryProvider).cacheBook(book);
           ref.read(favoritesProvider.notifier).toggle(book.id);
         },
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(
-            isFav ? PhosphorIcons.heartFill : PhosphorIcons.heart,
-            size: 20,
-            color: isFav ? theme.colorScheme.primary : Colors.white,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Colors.black45,
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  isFav ? PhosphorIcons.heartFill : PhosphorIcons.heart,
+                  size: 20,
+                  color: isFav ? theme.colorScheme.primary : Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -178,11 +215,11 @@ class BookListRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final linkAuthor = onAuthorTap != null &&
+    final linkAuthor =
+        onAuthorTap != null &&
         subtitleOverride == null &&
         (book.author ?? '').isNotEmpty;
-    final subtitleText =
-        subtitleOverride ?? book.author ?? 'Unknown author';
+    final subtitleText = subtitleOverride ?? book.author ?? 'Unknown author';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -204,15 +241,31 @@ class BookListRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   if (linkAuthor)
-                    GestureDetector(
+                    Semantics(
+                      button: true,
+                      label: 'More by $subtitleText',
+                      excludeSemantics: true,
                       onTap: onAuthorTap,
-                      child: Text(
-                        subtitleText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onAuthorTap,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: 48,
+                            minWidth: 48,
+                          ),
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              subtitleText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     )
@@ -221,13 +274,14 @@ class BookListRow extends StatelessWidget {
                       subtitleText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                 ],
               ),
             ),
-            trailing ?? Icon(PhosphorIcons.caretRight),
+            trailing ?? ExcludeSemantics(child: Icon(PhosphorIcons.caretRight)),
           ],
         ),
       ),
@@ -247,7 +301,10 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
           ),
           if (action != null) action!,
         ],

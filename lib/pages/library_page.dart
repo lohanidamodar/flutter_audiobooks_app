@@ -146,7 +146,7 @@ class LibraryPage extends ConsumerWidget {
         children: [
           SectionHeader(title: title),
           SizedBox(
-            height: 218,
+            height: posterRailHeight(context),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),

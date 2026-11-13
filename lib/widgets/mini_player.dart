@@ -132,7 +132,8 @@ class _Artwork extends StatelessWidget {
       child: Icon(PhosphorIcons.bookOpen, color: theme.colorScheme.primary, size: 22),
     );
     if (artUrl == null) return placeholder;
-    return ClipRRect(
+    return ExcludeSemantics(
+        child: ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: CachedNetworkImage(
         imageUrl: artUrl!,
@@ -144,7 +145,7 @@ class _Artwork extends StatelessWidget {
         errorWidget: (_, __, ___) => placeholder,
         placeholder: (_, __) => placeholder,
       ),
-    );
+    ));
   }
 }
 

@@ -488,7 +488,7 @@ class _MoreByAuthor extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 218,
+          height: posterRailHeight(context),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
@@ -866,7 +866,7 @@ class _ChapterTile extends StatelessWidget {
       iconSize: 20,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       tooltip: tooltip,
       icon: Icon(icon),
       onPressed: onPressed,

@@ -152,7 +152,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           SectionHeader(title: title),
           SizedBox(
-            height: 218,
+            height: posterRailHeight(context),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -182,6 +182,7 @@ class _SearchAnchorButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return SearchAnchor(
       isFullScreen: true,
+      enableTapHandling: false, // the IconButton opens the view itself
       viewHintText: 'Search by title or author…',
       builder: (context, controller) => IconButton(
         icon: Icon(PhosphorIcons.magnifyingGlass),

@@ -32,11 +32,25 @@ class AudiobookTheme {
     );
   }
 
-  static ThemeData light() => _decorate(PopupBitsTheme.build(
-        archetype: archetype,
-        product: product,
-        brightness: Brightness.light,
-      ));
+  /// The brand amber (#E8A33D) is only 2:1 against the light surface, so on
+  /// the light theme `primary` — used for text links and section labels as
+  /// well as filled buttons — is a deeper amber that clears WCAG AA (4.5:1)
+  /// with white `onPrimary`. The dark theme keeps the brand amber.
+  static const _lightPrimary = Color(0xFF8F5B00);
+
+  static ThemeData light() {
+    final base = PopupBitsTheme.build(
+      archetype: archetype,
+      product: product,
+      brightness: Brightness.light,
+    );
+    return _decorate(base.copyWith(
+      colorScheme: base.colorScheme.copyWith(
+        primary: _lightPrimary,
+        onPrimary: const Color(0xFFFFFFFF),
+      ),
+    ));
+  }
 
   static ThemeData dark() => _decorate(PopupBitsTheme.build(
         archetype: archetype,
