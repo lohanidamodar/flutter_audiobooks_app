@@ -36,7 +36,8 @@ class AudiobookTheme {
   /// the light theme `primary` — used for text links and section labels as
   /// well as filled buttons — is a deeper amber that clears WCAG AA (4.5:1)
   /// with white `onPrimary`. The dark theme keeps the brand amber.
-  static const _lightPrimary = Color(0xFF8F5B00);
+  static const lightPrimary = Color(0xFF8F5B00);
+  static const _lightPrimary = lightPrimary;
 
   static ThemeData light() {
     final base = PopupBitsTheme.build(
@@ -44,19 +45,44 @@ class AudiobookTheme {
       product: product,
       brightness: Brightness.light,
     );
-    return _decorate(base.copyWith(
-      colorScheme: base.colorScheme.copyWith(
-        primary: _lightPrimary,
-        onPrimary: const Color(0xFFFFFFFF),
+    final focused = base.inputDecorationTheme.focusedBorder;
+    return _decorate(
+      base.copyWith(
+        colorScheme: base.colorScheme.copyWith(
+          primary: _lightPrimary,
+          onPrimary: const Color(0xFFFFFFFF),
+          // The default light error red is 3.5:1 on the surface.
+          error: const Color(0xFFB3261E),
+        ),
+        // PopupBitsTheme hard-codes these two to the brand amber (~2:1 on the
+        // light surface); point them at the AA-safe primary.
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: _lightPrimary),
+        ),
+        inputDecorationTheme: base.inputDecorationTheme.copyWith(
+          focusedBorder: focused is OutlineInputBorder
+              ? focused.copyWith(
+                  borderSide: BorderSide(color: _lightPrimary, width: 2),
+                )
+              : focused,
+        ),
       ),
-    ));
+    );
   }
 
-  static ThemeData dark() => _decorate(PopupBitsTheme.build(
-        archetype: archetype,
-        product: product,
-        brightness: Brightness.dark,
-      ));
+  static ThemeData dark() {
+    final base = PopupBitsTheme.build(
+      archetype: archetype,
+      product: product,
+      brightness: Brightness.dark,
+    );
+    return _decorate(
+      base.copyWith(
+        // The generated onPrimary is white, which is 2.2:1 on the amber.
+        colorScheme: base.colorScheme.copyWith(onPrimary: product.accentInk),
+      ),
+    );
+  }
 
   /// Layer the display serif onto the large type slots; keep popup_bits'
   /// Nunito for everything body/label-sized.

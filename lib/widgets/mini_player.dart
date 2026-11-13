@@ -176,6 +176,7 @@ class _PlayPauseButton extends StatelessWidget {
     return IconButton(
       iconSize: 30,
       icon: Icon(playing ? PhosphorIcons.pause : PhosphorIcons.play),
+      tooltip: playing ? 'Pause' : 'Play',
       onPressed: playing ? player.pause : player.play,
     );
   }

@@ -286,12 +286,12 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                             .value;
                         return downloads.isPaused(id);
                       }).length;
-                      return Row(
+                      return Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Expanded(
-                            child: Text('${chapters.length} chapters',
-                                style: theme.textTheme.titleLarge),
-                          ),
+                          Text('${chapters.length} chapters',
+                              style: theme.textTheme.titleLarge),
                           if (activeCount + pausedCount > 0)
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -398,6 +398,7 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     CircleAvatar(
+                      radius: 24, // 48dp tap target
                       backgroundColor: Colors.black38,
                       child: IconButton(
                         icon: Icon(PhosphorIcons.arrowLeft, color: Colors.white),
@@ -406,12 +407,15 @@ class _DetailPageState extends ConsumerState<DetailPage> {
                       ),
                     ),
                     CircleAvatar(
+                      radius: 24, // 48dp tap target
                       backgroundColor: Colors.black38,
                       child: IconButton(
                         icon: Icon(
                           isFavorite ? PhosphorIcons.heartFill : PhosphorIcons.heart,
+                          // On a dark scrim over the cover: brand amber, not
+                          // the (dark) light-theme primary.
                           color: isFavorite
-                              ? theme.colorScheme.primary
+                              ? AudiobookTheme.product.accent
                               : Colors.white,
                         ),
                         tooltip: isFavorite
@@ -630,23 +634,28 @@ class _GradientHeader extends StatelessWidget {
                     ),
                   ),
                   borderRadius: BorderRadius.circular(6),
-                  child: Padding(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 6, vertical: 2),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          book.author!,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w600),
+                        Flexible(
+                          child: Text(
+                            book.author!,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600),
+                          ),
                         ),
                         const SizedBox(width: 2),
                         Icon(PhosphorIcons.caretRight,
                             size: 18, color: theme.colorScheme.primary),
                       ],
                     ),
+                  ),
                   ),
                 ),
               if (book.totalTime != null) ...[
@@ -774,6 +783,7 @@ class _ChapterTile extends StatelessWidget {
             ? PhosphorIcons.bookmarkSimpleFill
             : PhosphorIcons.playCircleFill),
         color: isBookmarkChapter ? theme.colorScheme.primary : null,
+        tooltip: isBookmarkChapter ? 'Resume from bookmark' : 'Play chapter',
         iconSize: 32,
         onPressed: onPlay,
       ),

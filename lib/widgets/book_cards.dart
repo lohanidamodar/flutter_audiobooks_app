@@ -1,6 +1,7 @@
 import 'package:audiobooks/icons/phosphor_icons.dart';
 import 'package:audiobooks/providers/providers.dart';
 import 'package:audiobooks/resources/models/models.dart';
+import 'package:audiobooks/theme/audiobook_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -50,10 +51,20 @@ class BookCover extends StatelessWidget {
   }
 }
 
+/// Scrim behind the favourite heart (70% black so the icon holds 3:1 even on a
+/// white cover).
+const favoriteScrim = Color(0xB3000000);
+
 /// Height of a horizontal rail of [BookPosterCard]s. Grows with the text scale
 /// so the title and author lines never overflow at large font sizes.
-double posterRailHeight(BuildContext context, {double width = 140}) =>
-    width + 8 + MediaQuery.textScalerOf(context).scale(70);
+double posterRailHeight(BuildContext context, {double width = 140}) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final text = Theme.of(context).textTheme;
+  double line(TextStyle? s) =>
+      scaler.scale(s?.fontSize ?? 14) * (s?.height ?? 1.4);
+  // cover + gap + title (2 lines) + author (1 line) + a little slack.
+  return width + 8 + 2 * line(text.titleSmall) + line(text.bodySmall) + 6;
+}
 
 /// Poster-style card for rails and grids: cover + title + author.
 class BookPosterCard extends StatelessWidget {
@@ -155,7 +166,6 @@ class _FavoriteHeart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final isFav = ref.watch(favoritesProvider).contains(book.id);
     // 48dp hit area around a 32dp visual circle.
     return Tooltip(
@@ -173,7 +183,7 @@ class _FavoriteHeart extends ConsumerWidget {
           child: Center(
             child: DecoratedBox(
               decoration: const BoxDecoration(
-                color: Colors.black45,
+                color: favoriteScrim,
                 shape: BoxShape.circle,
               ),
               child: Padding(
@@ -181,7 +191,9 @@ class _FavoriteHeart extends ConsumerWidget {
                 child: Icon(
                   isFav ? PhosphorIcons.heartFill : PhosphorIcons.heart,
                   size: 20,
-                  color: isFav ? theme.colorScheme.primary : Colors.white,
+                  // Sits on a black scrim, so use the brand amber, not the light-theme
+                  // primary (a dark amber).
+                  color: isFav ? AudiobookTheme.product.accent : Colors.white,
                 ),
               ),
             ),

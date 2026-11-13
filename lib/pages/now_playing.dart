@@ -20,6 +20,8 @@ Color _gradientGlow(Color c) {
 class NowPlayingPage extends ConsumerWidget {
   const NowPlayingPage({super.key});
 
+  static final _darkTheme = AudiobookTheme.dark();
+
   static Route<void> route() => PageRouteBuilder(
         opaque: true,
         transitionDuration: const Duration(milliseconds: 360),
@@ -55,11 +57,16 @@ class NowPlayingPage extends ConsumerWidget {
     final coverColor = artUrl != null
         ? ref.watch(coverColorProvider(artUrl)).value
         : null;
-    final accent = Theme.of(context).colorScheme.primary;
+    // This screen is a fixed near-black surface in both app themes, so it
+    // always uses the dark theme and the brand amber (the light-theme primary
+    // is a dark amber that fails contrast on black).
+    final accent = AudiobookTheme.product.accent;
     const bg = Color(0xFF0B0A09);
     final glow = _gradientGlow(coverColor ?? accent);
 
-    return Scaffold(
+    return Theme(
+      data: _darkTheme,
+      child: Scaffold(
       backgroundColor: bg,
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 500),
@@ -82,31 +89,44 @@ class NowPlayingPage extends ConsumerWidget {
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  _TopBar(
-                    album: mediaItem?.album,
-                    onStop: () => ref.read(audiobookPlayerProvider).stop(),
+              // Scrolls when large text does not fit; otherwise the content
+              // is spread over the full height.
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _TopBar(
+                          album: mediaItem?.album,
+                          onStop: () =>
+                              ref.read(audiobookPlayerProvider).stop(),
+                        ),
+                        const SizedBox(height: 16),
+                        _Cover(artUrl: artUrl, glow: glow),
+                        const SizedBox(height: 16),
+                        _TitleBlock(
+                          title: mediaItem?.title ?? 'Nothing playing',
+                          author: mediaItem?.artist ?? '',
+                        ),
+                        const SizedBox(height: 28),
+                        _Scrubber(accent: accent),
+                        const SizedBox(height: 8),
+                        _Transport(accent: accent),
+                        const SizedBox(height: 12),
+                        const _BottomRow(),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                  const Spacer(flex: 2),
-                  _Cover(artUrl: artUrl, glow: glow),
-                  const Spacer(flex: 2),
-                  _TitleBlock(
-                    title: mediaItem?.title ?? 'Nothing playing',
-                    author: mediaItem?.artist ?? '',
-                  ),
-                  const SizedBox(height: 28),
-                  _Scrubber(accent: accent),
-                  const SizedBox(height: 8),
-                  _Transport(accent: accent),
-                  const SizedBox(height: 12),
-                  const _BottomRow(),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -133,7 +153,7 @@ class _TopBar extends StatelessWidget {
               const Text(
                 'NOW PLAYING',
                 style: TextStyle(
-                  color: Colors.white60,
+                  color: Colors.white70,
                   fontSize: 11,
                   letterSpacing: 2,
                   fontWeight: FontWeight.w600,
@@ -242,7 +262,7 @@ class _TitleBlock extends StatelessWidget {
           author,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white60, fontSize: 15),
+          style: const TextStyle(color: Colors.white70, fontSize: 15),
         ),
       ],
     );
@@ -361,8 +381,9 @@ class _BottomRow extends ConsumerWidget {
     final speed = ref.watch(speedProvider).value ?? 1.0;
     final sleepRemaining = ref.watch(sleepTimerProvider);
     final sleepActive = sleepRemaining != null;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Wrap(
+      alignment: WrapAlignment.spaceEvenly,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         TextButton.icon(
           onPressed: () => _cycleSpeed(controller, speed),
